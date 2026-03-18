@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 12 章：资源汇总与持续学习指南</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;1,400;1,600&family=IBM+Plex+Sans:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Dark Botanical Style
+           =========================================== */
+        :root {
+            --bg-primary: #0f0f0f;
+            --text-primary: #e8e4df;
+            --text-secondary: #9a9590;
+            --accent-warm: #d4a574;
+            --accent-pink: #e8b4b8;
+            --accent-gold: #c9b896;
+
+            --font-display: 'Cormorant', serif;
+            --font-body: 'IBM Plex Sans', sans-serif;
+            --font-code: 'Fira Code', monospace;
+
+            --title-size: clamp(2.5rem, 6vw, 4.5rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.2rem);
+            
+            --slide-padding: clamp(2rem, 5vw, 5rem);
+            --content-gap: clamp(1.5rem, 3vw, 3rem);
+
+            --duration-normal: 0.8s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           BASE VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-weight: 300;
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Abstract Soft Shapes Background */
+        .blur-shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .shape-1 { width: 50vmin; height: 50vmin; background: var(--accent-warm); top: -10vmin; left: -10vmin; }
+        .shape-2 { width: 40vmin; height: 40vmin; background: var(--accent-pink); bottom: -5vmin; right: -5vmin; }
+        .shape-3 { width: 30vmin; height: 30vmin; background: var(--accent-gold); top: 20%; right: 20%; opacity: 0.1; }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Dark Botanical)
+           =========================================== */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-body);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+            z-index: 2;
+        }
+
+        h1, h2 {
+            font-family: var(--font-display);
+            font-weight: 400;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            letter-spacing: -0.01em;
+        }
+        
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        h1 i, h2 i { color: var(--accent-warm); font-style: italic; }
+        
+        p, li {
+            font-size: var(--body-size);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        ul { padding-left: 1.5rem; margin-bottom: 1.5rem; }
+        li::marker { color: var(--accent-warm); }
+
+        .vertical-line {
+            width: 1px;
+            height: clamp(40px, 8vh, 80px);
+            background: linear-gradient(to bottom, transparent, var(--accent-warm), transparent);
+            margin: 1.5rem 0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(2rem, 5vw, 4rem);
+            height: 100%;
+            align-items: center;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 2rem;
+            border-radius: 4px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card h3 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: var(--accent-warm);
+            margin-bottom: 0.5rem;
+        }
+
+        .card.highlight {
+            border-top: 3px solid var(--accent-pink);
+        }
+
+        /* Timeline Infographic */
+        .timeline {
+            position: relative;
+            padding-left: 2.5rem;
+            border-left: 2px solid rgba(212, 165, 116, 0.3); /* accent-warm faded */
+            margin: 2rem 0;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+        .timeline-item:last-child { margin-bottom: 0; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.95rem; /* center on the border */
+            top: 0.2rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background: var(--accent-gold);
+            border: 3px solid var(--bg-primary);
+        }
+        .timeline-phase {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            color: var(--accent-pink);
+            margin-bottom: 0.3rem;
+            display: block;
+        }
+        .timeline-task {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        /* Distribution Bar Infographic */
+        .dist-bar {
+            display: flex;
+            height: 40px;
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 2rem 0 1rem 0;
+        }
+        .dist-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #0f0f0f;
+        }
+
+        /* Grid Table for Acronyms */
+        .acronym-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            font-size: 0.85rem;
+        }
+        .acronym-item {
+            background: rgba(255,255,255,0.02);
+            padding: 0.8rem;
+            border-left: 2px solid var(--accent-warm);
+        }
+        .acronym-key { color: var(--accent-pink); font-family: var(--font-code); display: block; margin-bottom: 0.2rem; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; }
+
+        /* ===========================================
+           UI CONTROLS
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            bottom: 0; left: 0; height: 2px;
+            background: var(--accent-warm);
+            z-index: 100;
+            transition: width 0.3s ease;
+        }
+        .nav-dots {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+        .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .dot.active { background: var(--accent-warm); transform: scale(1.5); }
+
+        /* Inline Editing */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+        .edit-toggle { position: fixed; top: 20px; left: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10001; background: transparent; color: var(--text-secondary); border: 1px solid var(--text-secondary); border-radius: 50%; width: 40px; height: 40px; font-size: 1rem; cursor: pointer; }
+        .edit-toggle:hover { color: var(--text-primary); border-color: var(--text-primary); }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: rgba(255,255,255,0.1); }
+        [contenteditable="true"] { outline: 1px dashed rgba(212, 165, 116, 0.5); outline-offset: 4px; border-radius: 2px; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✎</button>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="blur-shape shape-1"></div>
+        <div class="blur-shape shape-2"></div>
+        <div class="header-bar">
+            <span>Chapter 12</span>
+            <span>Resources & Learning Guide</span>
+        </div>
+        <div class="slide-content" style="align-items: center; text-align: center;">
+            <h1 class="reveal">资源汇总<br><i>与持续学习指南</i></h1>
+            <div class="vertical-line reveal"></div>
+            <p class="reveal" style="color: var(--text-secondary); max-width: 600px;">
+                系统整理核心教材、开源生态与中文资源，并为您提供一份切实可行的 16 周进阶路线图。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 2: Core Textbooks -->
+    <section class="slide">
+        <div class="blur-shape shape-3" style="top: -10%; left: -10%;"></div>
+        <div class="header-bar">
+            <span>01 / Literature</span>
+            <span>Core Textbooks</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal">必读<i>核心教材</i></h2>
+            <p class="reveal" style="color: var(--text-secondary);">从源头掌握模型理论与工程应用的权威著作：</p>
+            
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div class="card highlight">
+                    <h3>I. 第一梯队：模型原著</h3>
+                    <ul style="margin-top: 1rem;">
+                        <li><strong>《Activated Sludge Models...》</strong> (IWA, 2000)<br><span style="font-size: 0.85em; color: var(--text-secondary);">★★★★★ 所有模型的权威原始文献与参数集。</span></li>
+                        <li style="margin-top: 1rem;"><strong>《Biological Wastewater Treatment》</strong> (Henze等, 2008)<br><span style="font-size: 0.85em; color: var(--text-secondary);">★★★★★ 最全面的生物处理理论教材，研究生首选。</span></li>
+                    </ul>
+                </div>
+                
+                <div class="card" style="border-top: 3px solid var(--accent-gold);">
+                    <h3>II. 第二梯队：工程应用</h3>
+                    <ul style="margin-top: 1rem;">
+                        <li><strong>《Guidelines for Using ASM》</strong> (IWA, 2012)<br><span style="font-size: 0.85em; color: var(--text-secondary);">第一个真正意义上的“模型用户手册”（GMP 协议）。</span></li>
+                        <li style="margin-top: 1rem;"><strong>《Wastewater Engineering (5th)》</strong> (Metcalf & Eddy, 2014)<br><span style="font-size: 0.85em; color: var(--text-secondary);">工程实践百科全书，含大量设计计算表格。</span></li>
+                        <li style="margin-top: 1rem;"><strong>《Systems Analysis for Water Tech》</strong> (Gujer, 2008)<br><span style="font-size: 0.85em; color: var(--text-secondary);">Peterson 矩阵引入者的亲笔教材，数学推导严密。</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Chinese Resources -->
+    <section class="slide">
+        <div class="blur-shape shape-1" style="opacity: 0.1; right: -20%; left: auto;"></div>
+        <div class="header-bar">
+            <span>02 / Community</span>
+            <span>Chinese Resources</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal">中文<i>学习生态</i></h2>
+            
+            <div class="grid-3 reveal" style="margin-top: 2rem;">
+                <div class="card">
+                    <h3>经典中文教材</h3>
+                    <p style="font-size: 0.9em; margin-top: 1rem;"><strong>《废水生物处理：原理、设计与模拟》</strong><br>译者：郝晓地等。这是原著 Henze 2008 版的高质量译本，国内最重要的中文参考书。</p>
+                    <p style="font-size: 0.9em;"><strong>《活性污泥数学模型》</strong> (张代钧)<br>案例结合中国污水厂实际。</p>
+                </div>
+                
+                <div class="card">
+                    <h3>在线检索渠道</h3>
+                    <ul style="font-size: 0.9em; margin-top: 1rem;">
+                        <li><strong>知乎：</strong> 搜索“活性污泥模型 ASM”、“Peterson 矩阵”，关注工程师的理解笔记。</li>
+                        <li><strong>Bilibili：</strong> 搜索“污水处理数学模型”，获取高校公开课与研究生课程录像。</li>
+                        <li><strong>CSDN：</strong> 查找 ASM 的 Python 编程片段。</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>社群与期刊</h3>
+                    <p style="font-size: 0.9em; margin-top: 1rem;"><strong>公众号：</strong> 水处理技术、环境工程圈等。</p>
+                    <p style="font-size: 0.9em;"><strong>核心期刊：</strong><br>- Water Research<br>- Water Science & Technology<br>- 中国给水排水<br>- 环境科学学报</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Software Ecosystem -->
+    <section class="slide">
+        <div class="blur-shape shape-2" style="left: -10vmin;"></div>
+        <div class="header-bar">
+            <span>03 / Tools</span>
+            <span>Software & Code</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal">开源工具与<i>商业软件</i></h2>
+            <p class="reveal">从理论验证到全厂数字孪生的落地工具栈：</p>
+            
+            <div class="grid-2 reveal" style="margin-top: 1rem;">
+                <div style="background: rgba(0,0,0,0.4); padding: 2rem; border-radius: 4px; border-left: 2px solid var(--accent-pink);">
+                    <h3 style="color: var(--accent-pink); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 1rem;">Python 生态 (开源)</h3>
+                    <ul style="font-size: 0.9em;">
+                        <li><strong>WaterTAP：</strong> 美国 DOE 开发，支持 ASM1/2d 及最优化设计。</li>
+                        <li><strong>QSDsan：</strong> UIUC 开发，支持 LCA 及 BSM1 全厂基准模型。</li>
+                        <li><strong>pyASM：</strong> 轻量级 ASM 实现，适合教学。</li>
+                        <li><strong>自学起点：</strong> 本教程第 9 章提供的 300 行 Python 代码。</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.4); padding: 2rem; border-radius: 4px; border-left: 2px solid var(--accent-warm);">
+                    <h3 style="color: var(--accent-warm); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 1rem;">商业与学术软件</h3>
+                    <ul style="font-size: 0.9em;">
+                        <li><strong>Matlab/Simulink：</strong> 获取 IWA 官方免费 BSM1 测试框架。</li>
+                        <li><strong>BioWin (EnviroSim)：</strong> 业界主流，可申请 30 天教育试用。</li>
+                        <li><strong>GPS-X (Hydromantis)：</strong> 强大的图形化全厂模拟软件。</li>
+                        <li><strong>WEST (DHI) & SUMO：</strong> 均提供学术版或演示版。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 16-Week Plan -->
+    <section class="slide">
+        <div class="blur-shape shape-3"></div>
+        <div class="header-bar">
+            <span>04 / Action Plan</span>
+            <span>16-Week Roadmap</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal"><i>16 周</i>系统学习计划</h2>
+            
+            <div class="timeline reveal">
+                <div class="timeline-item">
+                    <span class="timeline-phase">阶段一：打地基 (第 1-4 周)</span>
+                    <span class="timeline-task">掌握历史背景、微生物代谢、COD 分馏，能手算单底物 CSTR 稳态（出水、污泥产量、OUR）。</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="timeline-phase">阶段二：核心突破 (第 5-8 周)</span>
+                    <span class="timeline-task">深入 Peterson 矩阵，推导 ASM1 系数验证 COD 守恒，对比理解 ASM2d 除磷机制与 ASM3。</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="timeline-phase" style="color: var(--accent-gold);">阶段三：编程实战 (第 9-12 周)</span>
+                    <span class="timeline-task">运行 Python ASM1 模拟，完成灵敏度分析；阅读 GMP 协议学习模型校准方法论。</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="timeline-phase" style="color: var(--accent-warm);">阶段四：进阶与前沿 (第 13-16 周)</span>
+                    <span class="timeline-task">接触 BioWin/GPS-X，精读数字孪生与机器学习前沿论文；执行一个完整的假设污水厂项目。</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Time Allocation -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>05 / Strategy</span>
+            <span>Time Management</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal">学习精力<i>分配策略</i></h2>
+            <p class="reveal">建议每周投入 8-10 小时，注重主动回顾与多维度验证：</p>
+            
+            <div class="reveal" style="margin-top: 2rem;">
+                <div class="dist-bar">
+                    <div class="dist-segment" style="width: 30%; background: var(--accent-warm);">理论学习 (3h)</div>
+                    <div class="dist-segment" style="width: 20%; background: var(--accent-gold);">推导练习 (2h)</div>
+                    <div class="dist-segment" style="width: 20%; background: var(--accent-pink);">Python 编程 (2h)</div>
+                    <div class="dist-segment" style="width: 20%; background: #fff;">文献阅读 (2h)</div>
+                    <div class="dist-segment" style="width: 10%; background: #ccc;">复习 (1h)</div>
+                </div>
+            </div>
+
+            <ul class="reveal" style="margin-top: 2rem;">
+                <li><strong>主动回顾 (Active Recall)：</strong> 抛开书本，在白纸上重推 Peterson 矩阵。</li>
+                <li><strong>交叉验证：</strong> 对比 Python 手写代码与商业软件的模拟结果，深挖差异。</li>
+                <li><strong>真实数据：</strong> 从污水厂年报中寻找真实数据练习进水分馏。</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 7: Acronyms -->
+    <section class="slide">
+        <div class="blur-shape shape-1" style="top:auto; bottom: -20%; right: -10%; left: auto;"></div>
+        <div class="header-bar">
+            <span>06 / Reference</span>
+            <span>Acronyms & Symbols</span>
+        </div>
+        <div class="slide-content">
+            <h2 class="reveal">常用缩略词<i>速查</i></h2>
+            
+            <div class="acronym-grid reveal" style="margin-top: 1.5rem; max-height: 55vh; overflow-y: auto;">
+                <div class="acronym-item"><span class="acronym-key">ASM</span> 活性污泥模型</div>
+                <div class="acronym-item"><span class="acronym-key">CSTR</span> 连续流完全混合反应器</div>
+                <div class="acronym-item"><span class="acronym-key">SRT</span> 污泥龄 / 泥龄</div>
+                <div class="acronym-item"><span class="acronym-key">EBPR</span> 强化生物除磷</div>
+                <div class="acronym-item"><span class="acronym-key">PAO</span> 聚磷菌</div>
+                <div class="acronym-item"><span class="acronym-key">GAO</span> 聚糖菌</div>
+                <div class="acronym-item"><span class="acronym-key">AOB / NOB</span> 氨 / 亚硝酸盐氧化菌</div>
+                <div class="acronym-item"><span class="acronym-key">AGS</span> 好氧颗粒污泥</div>
+                <div class="acronym-item"><span class="acronym-key">GMP</span> 良好建模实践</div>
+                <div class="acronym-item"><span class="acronym-key">μ_max</span> 最大比增长速率</div>
+                <div class="acronym-item"><span class="acronym-key">K_S</span> 半饱和常数</div>
+                <div class="acronym-item"><span class="acronym-key">Y</span> 产率系数</div>
+                <div class="acronym-item"><span class="acronym-key">b_d</span> 衰减系数</div>
+                <div class="acronym-item"><span class="acronym-key">ν_ij</span> Peterson 矩阵化学计量系数</div>
+            </div>
+            
+            <p class="reveal" style="font-size: 0.85em; color: var(--text-secondary); margin-top: 1rem;">* 注：本教程聚焦生物过程，沉淀模型 (Takács 等)、MBR 传质等需参阅进阶文献。</p>
+        </div>
+    </section>
+
+    <!-- Slide 8: Conclusion -->
+    <section class="slide">
+        <div class="blur-shape shape-2"></div>
+        <div class="header-bar">
+            <span>07 / Epilogue</span>
+            <span>The Engineer's Second Language</span>
+        </div>
+        <div class="slide-content" style="text-align: center;">
+            <h2 class="reveal" style="font-size: clamp(2rem, 5vw, 3rem);">建模是工程师的<i>"第二语言"</i></h2>
+            
+            <div class="reveal" style="margin: 3rem auto; padding: 2rem; border-top: 1px solid var(--accent-warm); border-bottom: 1px solid var(--accent-warm); max-width: 800px;">
+                <p style="font-size: 1.5rem; font-family: var(--font-display); font-style: italic; color: var(--accent-gold);">
+                    "模型是理解的工具，而不是目的本身。"
+                </p>
+            </div>
+            
+            <p class="reveal" style="max-width: 700px; margin: 0 auto; color: var(--text-secondary);">
+                当你能够独立构建一个 Peterson 矩阵、验证 COD 守恒、并用 Python 模拟动态响应时，你就已经从 <strong>“使用者”</strong> 成长为了 <strong>“理解者”</strong>。这是所有后续进阶（数字孪生、ML 混合建模、节能减排）的共同基础。
+            </p>
+            
+            <p class="reveal" style="margin-top: 2rem; color: var(--accent-pink); font-weight: 500;">
+                学无止境，但方向明确。祝学习顺利！
+            </p>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                
+                e.preventDefault();
+                this.isScrolling = true;
+
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else {
+                    this.isScrolling = false;
+                }
+
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return;
+                    
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '💾';
+                    
+                    document.querySelectorAll('h1, h2, h3, p, li, span, i, strong, .dist-segment').forEach(el => {
+                        if(!el.closest('.nav-dots') && !el.closest('.header-bar') && !el.closest('.slide-number') && !el.classList.contains('acronym-key')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✎';
+                    
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                    this.saveToLocal();
+                }
+            },
+            saveToLocal() {
+                const content = Array.from(document.querySelectorAll('.slide')).map(s => s.innerHTML);
+                localStorage.setItem('presentation_ch12_v1', JSON.stringify(content));
+            },
+            loadFromLocal() {
+                const saved = localStorage.getItem('presentation_ch12_v1');
+                if (saved) {
+                    try {
+                        const content = JSON.parse(saved);
+                        document.querySelectorAll('.slide').forEach((s, i) => {
+                            if (content[i]) s.innerHTML = content[i];
+                        });
+                    } catch(e) { console.error('Failed to load presentation state', e); }
+                }
+            }
+        };
+
+        editor.loadFromLocal();
+
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        hotzone.addEventListener('click', () => {
+            if(!editor.isActive) editor.toggleEditMode();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 6 章：ASM1 模型完全解读</title>
+
+    <!-- Fonts: Neon Cyber Style (Clash Display & Satoshi) -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@700,600&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+    <!-- Fallback for JetBrains Mono for Code/Matrix -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Neon Cyber)
+           =========================================== */
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #00ffcc;
+            --accent-magenta: #ff00aa;
+            --accent-glow-cyan: rgba(0, 255, 204, 0.4);
+            --accent-glow-magenta: rgba(255, 0, 170, 0.3);
+            
+            --font-display: 'Clash Display', sans-serif;
+            --font-body: 'Satoshi', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.1rem);
+            
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           MANDATORY VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { height: 100%; overflow-x: hidden; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 20%, var(--accent-glow-cyan) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, var(--accent-glow-magenta) 0%, transparent 40%);
+        }
+
+        /* Grid Pattern Background */
+        .slide::before {
+            content: ''; position: absolute; inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px; pointer-events: none; z-index: 0;
+        }
+
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden; padding: var(--slide-padding);
+            z-index: 1;
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Neon Cyber)
+           =========================================== */
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.02em; }
+        h1 { font-size: var(--title-size); color: var(--accent-cyan); text-shadow: 0 0 20px var(--accent-glow-cyan); }
+        h2 { font-size: var(--h2-size); border-left: 6px solid var(--accent-magenta); padding-left: 20px; margin-bottom: 1.5rem; }
+        
+        p, li { font-size: var(--body-size); line-height: 1.5; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        strong { color: var(--text-primary); }
+        ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+        /* Neon Components */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent-cyan);
+        }
+        .glass-card.magenta::after { background: var(--accent-magenta); }
+
+        .formula-box {
+            background: rgba(0, 255, 204, 0.05);
+            border: 1px solid var(--accent-cyan);
+            padding: 1rem; font-family: var(--font-mono); font-weight: 700;
+            font-size: clamp(1rem, 2vw, 1.4rem); color: var(--accent-cyan);
+            border-radius: 4px; text-shadow: 0 0 10px var(--accent-glow-cyan);
+            margin: 1rem 0; text-align: center;
+        }
+
+        /* Matrix Table */
+        .matrix-container {
+            font-family: var(--font-mono); font-size: clamp(0.6rem, 0.8vw, 0.85rem);
+            overflow-x: auto; background: rgba(0,0,0,0.5); border: 1px solid #333;
+        }
+        .matrix-table { width: 100%; border-collapse: collapse; }
+        .matrix-table th { background: var(--bg-secondary); color: var(--accent-cyan); padding: 0.5rem; text-align: center; border: 1px solid #333; }
+        .matrix-table td { padding: 0.4rem; text-align: center; border: 1px solid #333; color: var(--text-secondary); }
+        .matrix-table .highlight { color: var(--text-primary); font-weight: 700; }
+        .matrix-table .row-label { text-align: left; color: var(--accent-magenta); font-weight: 700; padding-left: 1rem; }
+
+        /* Charts */
+        .bar-chart { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
+        .bar-row { display: flex; align-items: center; gap: 1rem; }
+        .bar-label { width: 120px; font-size: 0.8rem; text-align: right; }
+        .bar-track { flex: 1; height: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-glow-cyan); transition: width 1.5s var(--ease-out-expo); }
+        .bar-value { width: 60px; font-size: 0.8rem; font-family: var(--font-mono); color: var(--accent-cyan); }
+
+        /* Fate Diagram */
+        .fate-flow { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 2rem 0; }
+        .fate-node { 
+            padding: 1rem; border: 1px solid var(--accent-cyan); border-radius: 8px; font-size: 0.8rem; text-align: center;
+            background: rgba(0, 255, 204, 0.05); position: relative;
+        }
+        .fate-arrow { color: var(--accent-cyan); font-weight: 900; font-size: 1.5rem; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+
+        /* UI CONTROLS */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta)); z-index: 100; transition: width 0.3s ease; }
+        .nav-dots { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s; border: 1px solid rgba(255,255,255,0.2); }
+        .dot.active { background: var(--accent-cyan); transform: scale(1.5); box-shadow: 0 0 10px var(--accent-glow-cyan); }
+
+        /* Edit Toggle */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 60px; height: 60px; z-index: 10000; }
+        .edit-toggle { position: fixed; top: 15px; left: 15px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 10001; background: var(--bg-secondary); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px var(--accent-glow-cyan); }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle">⚡</button>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="slide-content" style="text-align: center;">
+            <p class="reveal" style="color: var(--accent-magenta); font-weight: 700; letter-spacing: 0.3em;">CHAPTER 06</p>
+            <h1 class="reveal" style="font-size: clamp(2.5rem, 8vw, 6rem);">ASM1 Model</h1>
+            <h3 class="reveal" style="color: var(--text-secondary); margin-top: 1rem;">活性污泥 1 号模型完全解读</h3>
+            <div class="reveal" style="margin-top: 3rem; display: flex; justify-content: center; gap: 2rem;">
+                <span class="glass-card" style="font-size: 0.8rem; padding: 0.5rem 1rem;">13 个组分</span>
+                <span class="glass-card magenta" style="font-size: 0.8rem; padding: 0.5rem 1rem;">8 个过程</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Overview -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">ASM1 概览 (1987)</h2>
+            <div class="grid-2">
+                <div class="reveal">
+                    <p>由 IWA 工作组发布的<strong>第一个标准化</strong>活性污泥模型。</p>
+                    <p><strong>覆盖范围：</strong></p>
+                    <ul>
+                        <li><strong style="color: var(--accent-cyan);">碳氧化</strong> (有机物去除)</li>
+                        <li><strong style="color: var(--accent-cyan);">硝化</strong> (NH₄⁺ → NO₃⁻)</li>
+                        <li><strong style="color: var(--accent-cyan);">反硝化</strong> (NO₃⁻ → N₂)</li>
+                    </ul>
+                    <p style="font-size: 0.85rem; border-left: 2px solid var(--accent-magenta); padding-left: 1rem;">
+                        ⚠️ 不包含：生物除磷、胞内储存物。
+                    </p>
+                </div>
+                <div class="reveal glass-card">
+                    <p style="color: var(--accent-cyan); font-weight: 700; margin-bottom: 1rem;">核心规模：</p>
+                    <div class="grid-2" style="font-size: 0.8rem;">
+                        <div>
+                            <p>组分: 13</p>
+                            <p>过程: 8</p>
+                        </div>
+                        <div>
+                            <p>动力学参数: 14</p>
+                            <p>矩阵元素: 104</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: 13 Components -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">13 个核心组分</h2>
+            <div class="grid-2 reveal">
+                <div class="glass-card">
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">溶解性 (S)</h4>
+                    <ul style="font-size: 0.8rem;">
+                        <li><strong>S_I:</strong> 惰性溶解有机物</li>
+                        <li><strong>S_S:</strong> 易降解底物</li>
+                        <li><strong>S_O:</strong> 溶解氧</li>
+                        <li><strong>S_NO:</strong> 硝态氮 (NO₃+NO₂)</li>
+                        <li><strong>S_NH:</strong> 氨氮 (NH₄+NH₃)</li>
+                        <li><strong>S_ND:</strong> 可降解有机氮</li>
+                        <li><strong>S_ALK:</strong> 碱度</li>
+                    </ul>
+                </div>
+                <div class="glass-card magenta">
+                    <h4 style="color: var(--accent-magenta); margin-bottom: 0.5rem;">颗粒性 (X)</h4>
+                    <ul style="font-size: 0.8rem;">
+                        <li><strong>X_I:</strong> 惰性颗粒有机物</li>
+                        <li><strong>X_S:</strong> 慢速降解底物</li>
+                        <li><strong>X_BH:</strong> 活性异养菌</li>
+                        <li><strong>X_BA:</strong> 活性自养菌 (硝化菌)</li>
+                        <li><strong>X_P:</strong> 衰减产生的残余物</li>
+                        <li><strong>X_ND:</strong> 颗粒性有机氮</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Component Fate -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">组分在系统中的"命运"</h2>
+            <div class="fate-flow reveal">
+                <div class="fate-node">进水 S_S</div>
+                <div class="fate-arrow">→</div>
+                <div class="fate-node" style="border-color: var(--accent-magenta);">异养菌 X_BH</div>
+                <div class="fate-arrow">→</div>
+                <div class="fate-node">衰减 X_P / X_S</div>
+            </div>
+            <div class="grid-3 reveal">
+                <div class="glass-card" style="text-align: center;">
+                    <p style="font-size: 0.75rem;"><strong>S_I</strong></p>
+                    <p style="font-size: 0.6rem;">直接穿透，不去除</p>
+                </div>
+                <div class="glass-card" style="text-align: center;">
+                    <p style="font-size: 0.75rem;"><strong>X_I</strong></p>
+                    <p style="font-size: 0.6rem;">随污泥排出系统</p>
+                </div>
+                <div class="glass-card" style="text-align: center;">
+                    <p style="font-size: 0.75rem;"><strong>S_NH</strong></p>
+                    <p style="font-size: 0.6rem;">硝化 → S_NO</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: 8 Processes -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">8 个生物过程</h2>
+            <div class="matrix-container reveal">
+                <table class="matrix-table" style="font-size: 0.75rem;">
+                    <tr><th>编号</th><th>过程名称</th><th>主体</th><th>电子受体</th></tr>
+                    <tr><td>1</td><td class="row-label">异养菌好氧生长</td><td>X_BH</td><td>S_O</td></tr>
+                    <tr><td>2</td><td class="row-label">异养菌缺氧生长</td><td>X_BH</td><td>S_NO</td></tr>
+                    <tr><td>3</td><td class="row-label">自养菌好氧生长</td><td>X_BA</td><td>S_O</td></tr>
+                    <tr><td>4</td><td class="row-label">异养菌衰减</td><td>X_BH</td><td>—</td></tr>
+                    <tr><td>5</td><td class="row-label">自养菌衰减</td><td>X_BA</td><td>—</td></tr>
+                    <tr><td>6</td><td class="row-label">有机氮氨化</td><td>—</td><td>—</td></tr>
+                    <tr><td>7</td><td class="row-label">有机物水解</td><td>X_BH</td><td>S_O/S_NO</td></tr>
+                    <tr><td>8</td><td class="row-label">有机氮水解</td><td>—</td><td>—</td></tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Process 1 Detail -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">过程 1：异养菌好氧生长</h2>
+            <div class="formula-box reveal">
+                ρ₁ = μ_H · (S_S/(K_S + S_S)) · (S_O/(K_OH + S_O)) · X_BH
+            </div>
+            <div class="grid-2 reveal">
+                <div class="glass-card">
+                    <p style="color: var(--accent-cyan);">化学计量系数 (j):</p>
+                    <ul style="font-size: 0.8rem;">
+                        <li><strong>S_S:</strong> -1/Y_H</li>
+                        <li><strong>X_BH:</strong> +1 (参考量)</li>
+                        <li><strong>S_O:</strong> -(1-Y_H)/Y_H</li>
+                        <li><strong>S_NH:</strong> -i_XB (同化消耗)</li>
+                    </ul>
+                </div>
+                <div>
+                    <p style="font-size: 0.85rem;"><strong>COD 守恒验证：</strong></p>
+                    <p style="font-family: var(--font-mono); font-size: 0.7rem;">
+                        (-1/Y_H)×1 + (1)×1 + (-(1-Y_H)/Y_H)×(-1) = 0 ✓
+                    </p>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 1rem;">
+                        消耗 1.493g COD 底物，合成 1g 细胞，消耗 0.493g O₂ (Y_H=0.67)。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Process 2 & Switching -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">过程 2：反硝化与开关函数</h2>
+            <div class="formula-box reveal" style="font-size: 0.9rem;">
+                ρ₂ = μ_H · ... · <span style="color: var(--accent-magenta);">[K_OH/(K_OH + S_O)]</span> · <span style="color: var(--accent-cyan);">[S_NO/(K_NO + S_NO)]</span> · η_g · X_BH
+            </div>
+            <div class="grid-2 reveal">
+                <div class="glass-card magenta">
+                    <p style="font-size: 0.8rem;"><strong>抑制开关 (S_O):</strong></p>
+                    <p style="font-size: 0.7rem;">当 S_O 存在时，[K_OH/(K_OH+S_O)] → 0，反硝化停止。</p>
+                </div>
+                <div class="glass-card">
+                    <p style="font-size: 0.8rem;"><strong>激活开关 (S_NO):</strong></p>
+                    <p style="font-size: 0.7rem;">当 S_NO 存在且无 S_O 时，反硝化启动。</p>
+                </div>
+            </div>
+            <p class="reveal" style="font-size: 0.8rem; margin-top: 1rem;">
+                <strong>η_g (0.8):</strong> 缺氧修正系数。反映缺氧条件下细胞生长效率稍低。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 8: Decay Concept -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">死亡-再生 (Death-Regeneration)</h2>
+            <p class="reveal">ASM1 对生物衰减的特殊处理 (不同于内源呼吸)：</p>
+            <div class="fate-flow reveal">
+                <div class="fate-node" style="border-color: var(--accent-magenta);">活性细菌 X_BH</div>
+                <div class="fate-arrow">→</div>
+                <div class="fate-node" style="border-style: dashed;">残余 X_P (8%)</div>
+                <div class="fate-arrow">+</div>
+                <div class="fate-node">底物 X_S (92%)</div>
+            </div>
+            <div class="reveal glass-card" style="font-size: 0.85rem;">
+                <p><strong>逻辑：</strong> 死亡的细胞不直接消耗氧气，而是变成 X_S，再通过过程 7 (水解) 和过程 1 (生长) 间接产生氧消耗 (OUR)。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: Peterson Matrix -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">ASM1 Peterson Matrix (部分)</h2>
+            <div class="matrix-container reveal">
+                <table class="matrix-table" style="font-size: 0.65rem;">
+                    <tr>
+                        <th>过程 \ 组分</th>
+                        <th>S_S</th>
+                        <th>X_S</th>
+                        <th>X_BH</th>
+                        <th>S_O</th>
+                        <th>S_NO</th>
+                        <th>S_NH</th>
+                        <th>S_ALK</th>
+                    </tr>
+                    <tr>
+                        <td class="row-label">1. 好氧生长</td>
+                        <td class="highlight">-1/Y_H</td>
+                        <td></td>
+                        <td class="highlight">+1</td>
+                        <td>-(1-Y_H)/Y_H</td>
+                        <td></td>
+                        <td>-i_XB</td>
+                        <td>-i_XB/14</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">2. 缺氧生长</td>
+                        <td class="highlight">-1/Y_H</td>
+                        <td></td>
+                        <td class="highlight">+1</td>
+                        <td></td>
+                        <td>-(1-Y_H)/(2.86Y_H)</td>
+                        <td>-i_XB</td>
+                        <td>...</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">3. 硝化生长</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>-(4.57-Y_A)/Y_A</td>
+                        <td>+1/Y_A</td>
+                        <td>-i_XB-1/Y_A</td>
+                        <td>...</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">4. 衰减</td>
+                        <td></td>
+                        <td>+(1-f_P)</td>
+                        <td class="highlight">-1</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: Parameters Chart -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">默认参数集 (20°C)</h2>
+            <div class="grid-2 reveal">
+                <div class="bar-chart">
+                    <p style="font-size: 0.8rem; color: var(--accent-cyan);">最大比增长速率 (d⁻¹)</p>
+                    <div class="bar-row">
+                        <div class="bar-label">异养菌 μ_H</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: 100%;"></div></div>
+                        <div class="bar-value">6.0</div>
+                    </div>
+                    <div class="bar-row">
+                        <div class="bar-label">自养菌 μ_A</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: 13%; background: var(--accent-magenta);"></div></div>
+                        <div class="bar-value">0.8</div>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--accent-cyan); margin-top: 1rem;">衰减系数 b (d⁻¹)</p>
+                    <div class="bar-row">
+                        <div class="bar-label">异养菌 b_H</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: 62%;"></div></div>
+                        <div class="bar-value">0.62</div>
+                    </div>
+                    <div class="bar-row">
+                        <div class="bar-label">自养菌 b_A</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: 20%; background: var(--accent-magenta);"></div></div>
+                        <div class="bar-value">0.20</div>
+                    </div>
+                </div>
+                <div class="glass-card" style="font-size: 0.8rem;">
+                    <p><strong>工程洞察：</strong></p>
+                    <ul>
+                        <li><strong>μ_H >> μ_A:</strong> 异养菌生长快 7-8 倍。</li>
+                        <li><strong>K_OA (0.4) > K_OH (0.2):</strong> 自养菌对氧的需求更苛刻。</li>
+                        <li><strong>Y_H (0.67) > Y_A (0.24):</strong> 异养菌产泥量远大于自养菌。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 11: Control Equation -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">S_NH 动态方程推导</h2>
+            <p class="reveal">在 CSTR 中，寻找 Peterson 矩阵中 S_NH 列的所有非零项：</p>
+            <div class="formula-box reveal" style="font-size: 0.8rem; text-align: left; padding-left: 2rem;">
+                dS_NH/dt = (S_NH,in - S_NH)/HRT<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- i_XB · ρ₁&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[过程1 消耗]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- i_XB · ρ₂&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[过程2 消耗]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- (i_XB + 1/Y_A) · ρ₃ [过程3 消耗]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ ρ₆&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[过程6 产生]
+            </div>
+            <p class="reveal" style="font-size: 0.85rem; color: var(--text-secondary);">
+                这是氨氮的四条去向：出水、异养合成、硝化消耗、有机氮氨化。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 12: Limitations -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">ASM1 的边界与局限</h2>
+            <div class="grid-2 reveal">
+                <div class="glass-card">
+                    <h4 style="color: var(--accent-magenta);">无法模拟：</h4>
+                    <ul style="font-size: 0.8rem;">
+                        <li>生物除磷 (EBPR)</li>
+                        <li>两步硝化 (NO₂⁻ 累积)</li>
+                        <li>胞内储存物 (PHA/Gly)</li>
+                        <li>N₂O 温室气体排放</li>
+                        <li>pH 实时动态</li>
+                    </ul>
+                </div>
+                <div>
+                    <p style="font-size: 0.85rem;"><strong>后续演进：</strong></p>
+                    <p style="font-size: 0.8rem;"><strong>ASM2/2d:</strong> 引入除磷与化学沉淀</p>
+                    <p style="font-size: 0.8rem;"><strong>ASM3:</strong> 引入储存物机制，修正衰减概念</p>
+                    <p style="font-size: 0.8rem; margin-top: 1.5rem; color: var(--accent-cyan);">尽管如此，ASM1 依然是全球应用最广的基础模型。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 13: Summary -->
+    <section class="slide">
+        <div class="slide-content" style="text-align: center;">
+            <h2 class="reveal" style="color: var(--accent-cyan);">总结：ASM1 的价值</h2>
+            <div class="grid-3 reveal" style="margin-top: 2rem;">
+                <div class="glass-card">
+                    <p style="font-size: 2rem;">13</p>
+                    <p style="font-size: 0.7rem;">核心组分</p>
+                </div>
+                <div class="glass-card">
+                    <p style="font-size: 2rem;">08</p>
+                    <p style="font-size: 0.7rem;">生物过程</p>
+                </div>
+                <div class="glass-card">
+                    <p style="font-size: 2rem;">𝝂𝝆</p>
+                    <p style="font-size: 0.7rem;">Peterson 矩阵</p>
+                </div>
+            </div>
+            <p class="reveal" style="margin-top: 2rem; color: var(--text-secondary);">掌握 ASM1，是通往工艺建模专家的必经之路。</p>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                e.preventDefault();
+                this.isScrolling = true;
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else { this.isScrolling = false; }
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return;
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.innerHTML = '⚡'; // Or Save Icon
+                    document.querySelectorAll('h1, h2, h3, p, li, td, th, span').forEach(el => {
+                        if(!el.closest('.nav-dots')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                }
+            }
+        };
+
+        document.getElementById('editToggle').addEventListener('click', () => editor.toggleEditMode());
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        document.addEventListener('keydown', (e) => { if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode(); });
+    </script>
+</body>
+</html>

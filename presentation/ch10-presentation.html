@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 10 章：模型校准方法论</title>
+
+    <!-- Fonts: Archivo for Titles, Nunito for Body -->
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@800;900&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Swiss Modern)
+           =========================================== */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-dark: #000000;
+            --text-primary: #000000;
+            --text-on-dark: #ffffff;
+            --accent: #ff3300; /* Bauhaus Red */
+            --accent-soft: #fff5f2;
+            
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --title-size: clamp(2rem, 6vw, 4.5rem);
+            --h2-size: clamp(1.5rem, 4vw, 2.8rem);
+            --body-size: clamp(0.9rem, 1.6vw, 1.2rem);
+            
+            --slide-padding: clamp(1.5rem, 5vw, 6rem);
+            --content-gap: clamp(1rem, 3vw, 3rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           MANDATORY VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { height: 100%; overflow: hidden; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+            background: var(--bg-primary);
+        }
+
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden; padding: var(--slide-padding);
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Swiss Modern)
+           =========================================== */
+        .grid-bg {
+            position: absolute; inset: 0;
+            background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px);
+            background-size: 50px 50px; opacity: 0.5; z-index: -1;
+        }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 900; line-height: 0.95; text-transform: uppercase; letter-spacing: -0.02em; }
+        h1 { font-size: var(--title-size); color: var(--text-primary); border-bottom: 20px solid var(--accent); display: inline-block; padding-bottom: 10px; }
+        h2 { font-size: var(--h2-size); margin-bottom: 1rem; position: relative; }
+        h2::before { content: ''; position: absolute; left: calc(-1 * var(--slide-padding)); top: 0; height: 100%; width: 15px; background: var(--accent); }
+
+        p, li { font-size: var(--body-size); line-height: 1.4; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 600; }
+        ul { padding-left: 0; list-style: none; }
+        ul li::before { content: '■ '; color: var(--accent); font-weight: 900; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+
+        /* Split Panels */
+        .split-panel { height: 100%; display: flex; flex-direction: column; padding: 2rem; }
+        .panel-dark { background: var(--bg-dark); color: var(--text-on-dark); }
+        .panel-dark p, .panel-dark li, .panel-dark h2 { color: var(--text-on-dark); }
+        .panel-red { background: var(--accent); color: var(--text-on-dark); }
+        .panel-red p, .panel-red li, .panel-red h2 { color: var(--text-on-dark); }
+
+        /* General dark background utility for child elements */
+        [style*="background: var(--bg-dark)"] p, 
+        [style*="background: var(--bg-dark)"] li,
+        [style*="background: var(--bg-dark)"] div { color: var(--text-on-dark) !important; }
+        
+        [style*="background: var(--accent)"] p, 
+        [style*="background: var(--accent)"] li,
+        [style*="background: var(--accent)"] div { color: var(--text-on-dark) !important; }
+
+        /* Hierarchy List */
+        .hierarchy-step { display: flex; align-items: center; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; border: 4px solid var(--bg-dark); }
+        .step-num { font-family: var(--font-display); font-size: 3rem; color: var(--accent); line-height: 1; }
+        .step-content h4 { text-transform: uppercase; font-size: 1.2rem; margin-bottom: 0.2rem; }
+
+        /* Sequence Waterfall */
+        .waterfall { display: flex; flex-direction: column; gap: 0.5rem; }
+        .wf-item { padding: 0.8rem 1.5rem; background: var(--bg-dark); color: white; width: fit-content; position: relative; transition: 0.3s; }
+        .wf-item:nth-child(2) { margin-left: 2rem; background: #333; }
+        .wf-item:nth-child(3) { margin-left: 4rem; background: #555; }
+        .wf-item:nth-child(4) { margin-left: 6rem; background: #777; }
+        .wf-item:nth-child(5) { margin-left: 8rem; background: var(--accent); }
+
+        /* Bar Chart */
+        .bar-chart { margin-top: 1.5rem; }
+        .bar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.8rem; }
+        .bar-label { width: 100px; font-weight: 900; text-align: right; font-size: 0.8rem; }
+        .bar-track { flex: 1; height: 25px; background: #eee; border-radius: 0; position: relative; }
+        .bar-fill { height: 100%; background: var(--accent); width: 0; transition: width 1.2s var(--ease-out-expo); }
+        .bar-val { font-family: var(--font-mono); font-size: 0.8rem; width: 60px; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(40px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+
+        /* UI CONTROLS */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 8px; background: var(--accent); z-index: 100; transition: width 0.3s ease; }
+        .nav-info { position: fixed; bottom: 20px; right: 20px; font-family: var(--font-display); font-size: 1.5rem; z-index: 100; opacity: 0.2; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-info" id="navInfo">01</div>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <p class="reveal" style="font-weight: 900; color: var(--accent); letter-spacing: 0.5em; margin-bottom: 1rem;">GMP / MODELLING PRACTICE</p>
+            <h1 class="reveal">模型校准<br>方法论</h1>
+            <h3 class="reveal" style="margin-top: 2rem; color: #666; font-style: italic;">从“参数拨号”到“系统诊断”的范式转移</h3>
+        </div>
+    </section>
+
+    <!-- Slide 2: Not Tuning, But Diagnosis -->
+    <section class="slide">
+        <div class="grid-2" style="height: 100%; gap: 0;">
+            <div class="split-panel panel-dark reveal">
+                <h2 style="color: var(--accent); border: none; padding: 0;">典型的误区</h2>
+                <p style="margin-top: 2rem; font-size: 1.5rem; font-style: italic; color: #888;">"出水氨氮高了，那就把最大生长速率 μ_A 调大一点。"</p>
+                <div style="margin-top: auto; padding: 1rem; border: 2px solid #444;">
+                    <p style="color: var(--accent); font-weight: 900;">⚠️ 危害：</p>
+                    <p>掩盖进水分馏错误、无法预测新工况、参数失去物理意义。</p>
+                </div>
+            </div>
+            <div class="split-panel reveal">
+                <h2>校准的本质</h2>
+                <p style="margin-top: 2rem;">校准不是<strong>“调参数”</strong>，而是<strong>“诊断”</strong>数据与模型之间的不一致性。</p>
+                <ul style="margin-top: 2rem;">
+                    <li>最小化预测偏差 (拟合优度)</li>
+                    <li>保持参数物理合理性 (可解释性)</li>
+                    <li>确保独立数据集验证 (泛化能力)</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Protocols -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">三大主流校准协议</h2>
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div style="background: var(--bg-dark); color: white; padding: 2rem;">
+                    <h3 style="color: var(--accent);">BIOMATH</h3>
+                    <p style="font-size: 0.8rem; margin-top: 1rem;">根特大学 8 步法。最早的规范框架，强调水力模型校准与灵敏度分析。</p>
+                </div>
+                <div style="background: #f4f4f4; padding: 2rem; border-left: 10px solid var(--accent);">
+                    <h3>STOWA</h3>
+                    <p style="font-size: 0.8rem; margin-top: 1rem;">荷兰应用水研究基金会。工程导向，强调“先稳态、后动态”的迭代顺序。</p>
+                </div>
+            </div>
+            <div class="reveal" style="margin-top: 2rem; background: var(--accent); color: white; padding: 2rem;">
+                <h3 style="margin-bottom: 0.5rem;">GMP (IWA 统一协议)</h3>
+                <p>整合全球协议的权威标准。引入<strong>“校准层级”</strong>与<strong>“校准生命周期”</strong>概念。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: GMP Lifecycle -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">GMP 五阶段框架</h2>
+            <div style="display: flex; justify-content: space-between; margin-top: 3rem;" class="reveal">
+                <div style="flex: 1; border-top: 8px solid black; padding-top: 1rem;">
+                    <p style="font-weight: 900; color: var(--accent);">01 项目定义</p>
+                    <p style="font-size: 0.7rem;">目标、精度、数据清单</p>
+                </div>
+                <div style="flex: 1; border-top: 8px solid black; padding-top: 1rem; margin-left: 1rem;">
+                    <p style="font-weight: 900; color: var(--accent);">02 数据核对</p>
+                    <p style="font-size: 0.7rem;">质量守恒验证 (COD/N/P)</p>
+                </div>
+                <div style="flex: 1; border-top: 8px solid black; padding-top: 1rem; margin-left: 1rem;">
+                    <p style="font-weight: 900; color: var(--accent);">03 模型设置</p>
+                    <p style="font-size: 0.7rem;">工艺建模、水力模型</p>
+                </div>
+                <div style="flex: 1; border-top: 8px solid var(--accent); padding-top: 1rem; margin-left: 1rem;">
+                    <p style="font-weight: 900;">04 系统校准</p>
+                    <p style="font-size: 0.7rem;">特征化、稳态、动态</p>
+                </div>
+                <div style="flex: 1; border-top: 8px solid black; padding-top: 1rem; margin-left: 1rem;">
+                    <p style="font-weight: 900; color: var(--accent);">05 验证应用</p>
+                    <p style="font-size: 0.7rem;">独立验证、情景分析</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Hierarchy -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">校准层级 (Hierarchy)</h2>
+            <div class="reveal" style="margin-top: 2rem;">
+                <div class="hierarchy-step">
+                    <div class="step-num">L1</div>
+                    <div class="step-content">
+                        <h4>仅调整进水分馏</h4>
+                        <p style="font-size: 0.8rem;">最常用，解决 70% 的偏差。不修改动力学参数。</p>
+                    </div>
+                </div>
+                <div class="hierarchy-step" style="border-color: var(--accent);">
+                    <div class="step-num" style="color: black;">L2</div>
+                    <div class="step-content">
+                        <h4>分馏 + 关键动力学参数</h4>
+                        <p style="font-size: 0.8rem;">调整灵敏度最高的参数 (如 μ_A)。适用于特殊水质。</p>
+                    </div>
+                </div>
+                <div class="hierarchy-step">
+                    <div class="step-num">L3</div>
+                    <div class="step-content">
+                        <h4>全参数优化</h4>
+                        <p style="font-size: 0.8rem;">需要大量独立实验 (OUR 呼吸测定、硝化速率测定)。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Influent Fractionation -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">进水分馏：校准的核心</h2>
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div>
+                    <p>进水分馏决定了模型预测的准确性。<strong>S_I (溶解惰性)</strong> 直接决定出水 COD 下限。</p>
+                    <div style="background: #f4f4f4; padding: 1.5rem; margin-top: 1rem;">
+                        <p style="font-weight: 900; color: var(--accent);">推荐方法：OUR 呼吸测定法</p>
+                        <p style="font-size: 0.8rem;">通过 OUR 随时间的变化曲线，分离 S_S (快速峰) 与 X_S (缓慢水解段)。</p>
+                    </div>
+                </div>
+                <div style="background: var(--bg-dark); color: white; padding: 2rem;">
+                    <p style="font-weight: 900; color: var(--accent);">典型分馏 (市政污水):</p>
+                    <div style="font-family: var(--font-mono); font-size: 0.9rem; margin-top: 1rem;">
+                        S_S (易降解): 15%<br>
+                        X_S (慢速): 45%<br>
+                        X_I (颗粒惰性): 32%<br>
+                        S_I (溶解惰性): 8%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Hydraulic Model -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">水力模型校准 (RTD)</h2>
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div>
+                    <p>真实混合模式介于 <strong>CSTR</strong> 与 <strong>PFR</strong> 之间。</p>
+                    <p style="margin-top: 1rem;"><strong>示踪剂测试 (Tracer Test):</strong></p>
+                    <ul>
+                        <li>注入脉冲示踪剂 (LiCl, 荧光素)</li>
+                        <li>监测出水 RTD 曲线</li>
+                        <li>拟合 N 个 CSTR 串联模型</li>
+                    </ul>
+                </div>
+                <div style="border: 4px solid black; padding: 1rem;">
+                    <p style="font-weight: 900;">N 的工程估算：</p>
+                    <ul style="font-size: 0.9rem;">
+                        <li>完全混合氧化沟: N = 1-2</li>
+                        <li>廊道式曝气池: N = 4-6</li>
+                        <li>推流式曝气池: N ≥ 8</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: Steady-state Sequence -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">稳态校准顺序 (不可打乱)</h2>
+            <div class="waterfall reveal" style="margin-top: 3rem;">
+                <div class="wf-item">01 COD 守恒检查 (误差 &lt; 5%)</div>
+                <div class="wf-item">02 污泥产量校准 (Y_H, f_P, X_I)</div>
+                <div class="wf-item">03 氧消耗 (OUR) 校准</div>
+                <div class="wf-item">04 硝化性能校准 (μ_A, b_A, K_NH)</div>
+                <div class="wf-item">05 反硝化与除磷校准</div>
+            </div>
+            <p class="reveal" style="margin-top: 2rem; color: var(--accent); font-weight: 900;">
+                提示：底层不稳，高层必塌。严禁直接跳到硝化参数调整。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 9: Sensitivity -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">灵敏度分析：拨动哪个旋钮？</h2>
+            <p class="reveal"><strong>局部灵敏度指数 (S_ij):</strong> 参数变化 1% 引起输出变化的百分比。</p>
+            
+            <div class="bar-chart reveal">
+                <p style="font-weight: 900; margin-bottom: 1rem;">对出水 S_NH (氨氮) 的参数灵敏度：</p>
+                <div class="bar-row">
+                    <div class="bar-label">μ_A</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 90%; background: var(--accent);"></div></div>
+                    <div class="bar-val">- 0.92</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">K_NH</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 60%;"></div></div>
+                    <div class="bar-val">+ 0.65</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">b_A</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 30%;"></div></div>
+                    <div class="bar-val">+ 0.28</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">μ_H</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 5%;"></div></div>
+                    <div class="bar-val">+ 0.04</div>
+                </div>
+            </div>
+            <p class="reveal" style="font-size: 0.8rem; margin-top: 1rem; color: #666;">
+                结论：μ_A 和 K_NH 是硝化过程的“主控旋钮”，而异养菌参数影响极微。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 10: Software -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">主流模拟软件</h2>
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div style="background: var(--bg-dark); color: white; padding: 2rem;">
+                    <h3 style="color: var(--accent);">BioWin / GPS-X</h3>
+                    <p style="font-size: 0.8rem; margin-top: 1rem;">工程设计与全厂模拟的首选。界面友好，数据库庞大。</p>
+                </div>
+                <div style="border: 4px solid black; padding: 2rem;">
+                    <h3>SUMO / WEST</h3>
+                    <p style="font-size: 0.8rem; margin-top: 1rem;">研究型软件。支持自定义模型、CFD 耦合与最新科研算法集成。</p>
+                </div>
+            </div>
+            <p class="reveal" style="margin-top: 2rem; font-weight: 900; text-align: center;">
+                “软件只是工具，核心是背后的 ASM 机理与数据质量。”
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 11: Summary -->
+    <section class="slide">
+        <div class="grid-bg"></div>
+        <div class="slide-content" style="text-align: center;">
+            <h2 class="reveal" style="border: none;">总结：校准的五个金律</h2>
+            <div class="reveal" style="margin-top: 3rem; display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+                <p style="background: var(--bg-dark); color: white; padding: 0.5rem 2rem; width: fit-content;">01 数据质量第一，模型第二</p>
+                <p style="background: var(--bg-dark); color: white; padding: 0.5rem 2rem; width: fit-content;">02 进水分馏解决 70% 的问题</p>
+                <p style="background: var(--bg-dark); color: white; padding: 0.5rem 2rem; width: fit-content;">03 遵循非对称、不可逆的校准顺序</p>
+                <p style="background: var(--bg-dark); color: white; padding: 0.5rem 2rem; width: fit-content;">04 保持参数的物理可解释性</p>
+                <p style="background: var(--accent); color: white; padding: 0.5rem 2rem; width: fit-content;">05 永远用独立数据集进行验证</p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling) return;
+                e.preventDefault();
+                this.isScrolling = true;
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else { this.isScrolling = false; }
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                            
+                            // Trigger Bar Chart Animation
+                            if (entry.target.querySelector('.bar-fill')) {
+                                entry.target.querySelectorAll('.bar-fill').forEach(bar => {
+                                    const width = bar.parentElement.nextElementSibling.innerText.includes('-') ? 
+                                                  bar.parentElement.nextElementSibling.innerText.split(' ')[1] * 100 :
+                                                  bar.parentElement.nextElementSibling.innerText.split(' ')[1] * 100;
+                                    // Custom mapping for these specific bars
+                                    if(bar.parentElement.previousElementSibling.innerText === 'μ_A') bar.style.width = '90%';
+                                    if(bar.parentElement.previousElementSibling.innerText === 'K_NH') bar.style.width = '65%';
+                                    if(bar.parentElement.previousElementSibling.innerText === 'b_A') bar.style.width = '28%';
+                                    if(bar.parentElement.previousElementSibling.innerText === 'μ_H') bar.style.width = '4%';
+                                });
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                // Not using dots for Swiss Modern to keep it clean, but progress bar is there
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('navInfo').innerText = (this.currentSlide + 1).toString().padStart(2, '0');
+            }
+        }
+
+        new SlidePresentation();
+    </script>
+</body>
+</html>

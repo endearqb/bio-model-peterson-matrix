@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 3 章：COD 分馏与水质特征化</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Swiss Modern Preset
+           =========================================== */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f4f4f4;
+            --bg-dark: #111111;
+            --text-primary: #000000;
+            --text-secondary: #555555;
+            --text-light: #ffffff;
+            --accent: #ff3300;
+
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            
+            --title-size: clamp(2rem, 6vw, 5rem);
+            --h2-size: clamp(1.5rem, 4vw, 3rem);
+            --h3-size: clamp(1.2rem, 2.5vw, 2rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.25rem);
+            --small-size: clamp(0.75rem, 1.2vw, 1rem);
+
+            --slide-padding: clamp(2rem, 5vw, 5rem);
+            --content-gap: clamp(1rem, 2vw, 2rem);
+            --element-gap: clamp(0.5rem, 1vw, 1rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           VIEWPORT FITTING: MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; max-height: 100%;
+            overflow: hidden; padding: var(--slide-padding);
+            z-index: 2;
+        }
+        .card, .container, .content-box { max-width: min(90vw, 1200px); max-height: min(80vh, 800px); }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); display: flex; flex-direction: column; }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.5; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: clamp(1rem, 2vw, 2rem); }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root { --slide-padding: clamp(1rem, 3vw, 2rem); --content-gap: clamp(0.5rem, 1.5vw, 1rem); --title-size: clamp(1.5rem, 4.5vw, 3rem); --h2-size: clamp(1.2rem, 3vw, 2rem); }
+        }
+        @media (max-height: 600px) {
+            :root { --slide-padding: clamp(0.75rem, 2.5vw, 1.5rem); --content-gap: clamp(0.4rem, 1vw, 0.75rem); --title-size: clamp(1.2rem, 4vw, 2.5rem); --body-size: clamp(0.8rem, 1.2vw, 1rem); }
+            .nav-dots, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root { --slide-padding: clamp(0.5rem, 2vw, 1rem); --title-size: clamp(1rem, 3.5vw, 2rem); --h2-size: clamp(1rem, 2.5vw, 1.5rem); --body-size: clamp(0.75rem, 1vw, 0.9rem); }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 7vw, 2.5rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           TYPOGRAPHY & THEME ELEMENTS
+           =========================================== */
+        h1, h2, h3, .font-display { font-family: var(--font-display); font-weight: 800; line-height: 1.1; margin-bottom: var(--content-gap); text-transform: uppercase; letter-spacing: -0.02em; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        p, li { font-size: var(--body-size); color: var(--text-secondary); }
+        strong { color: var(--text-primary); font-weight: 700; }
+        
+        .accent-text { color: var(--accent); }
+        
+        .swiss-grid-bg {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0; pointer-events: none;
+        }
+
+        .swiss-accent-box {
+            background-color: var(--bg-dark); color: var(--text-light);
+            padding: clamp(1.5rem, 3vw, 3rem); border-left: 8px solid var(--accent);
+        }
+        .swiss-accent-box p, .swiss-accent-box li { color: #dddddd; }
+        .swiss-accent-box h2, .swiss-accent-box h3 { color: var(--text-light); }
+
+        .swiss-card {
+            background: var(--bg-primary); border: 2px solid var(--text-primary);
+            padding: clamp(1rem, 2vw, 2rem); display: flex; flex-direction: column;
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.1); transition: transform 0.3s;
+        }
+        .swiss-card:hover { transform: translate(-4px, -4px); box-shadow: 12px 12px 0 rgba(0,0,0,0.1); }
+        .swiss-card h3 { font-size: var(--h3-size); margin-bottom: clamp(0.5rem, 1vw, 1rem); border-bottom: 2px solid var(--text-primary); padding-bottom: 0.5rem; }
+
+        .slide-number {
+            position: absolute; top: var(--slide-padding); right: var(--slide-padding);
+            font-family: var(--font-display); font-size: var(--body-size);
+            font-weight: 800; color: var(--text-primary); z-index: 10;
+        }
+        .slide-number::before { content: "NO."; color: var(--accent); margin-right: 0.2em; }
+
+        .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); width: 0%; z-index: 100; transition: width 0.3s; }
+        .nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--text-primary); background: transparent; cursor: pointer; transition: all 0.3s; }
+        .dot.active { background: var(--accent); border-color: var(--accent); }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal { opacity: 0; transform: translateY(30px); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo); }
+        .visible .reveal { opacity: 1; transform: translateY(0); }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; }
+
+        /* Custom specific */
+        .title-container { border-left: 12px solid var(--accent); padding-left: clamp(1rem, 3vw, 3rem); }
+        .equation-box { background: var(--bg-secondary); border: 2px dashed var(--text-secondary); padding: clamp(1rem, 2vw, 2rem); text-align: center; font-family: monospace; font-size: var(--h3-size); color: var(--text-primary); margin: var(--content-gap) 0; }
+        .dark-slide { background-color: var(--bg-dark); color: var(--text-light); }
+        .dark-slide .slide-number, .dark-slide p { color: #cccccc; }
+        .dark-slide .slide-number::before { color: var(--accent); }
+        .dark-slide h2 { color: var(--text-light); }
+        .dark-slide .dot { border-color: var(--text-light); }
+        .dark-slide strong, .swiss-accent-box strong { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progress"></div>
+    <nav class="nav-dots" id="navDots"></nav>
+
+    <!-- Slide 1: Title -->
+    <section class="slide title-slide">
+        <div class="swiss-grid-bg"></div>
+        <div class="slide-content">
+            <div class="title-container reveal">
+                <h1>COD 分馏与<br><span class="accent-text">水质特征化</span></h1>
+                <p style="font-size: var(--h3-size); margin-top: 1rem; color: var(--text-primary); font-weight: 600;">深入理解活性污泥模型中的“能量货币”</p>
+                <p style="margin-top: clamp(1rem, 2vw, 2rem); font-family: var(--font-display);">第 3 章 / 学习模块</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Objectives -->
+    <section class="slide swiss-accent-box">
+        <div class="slide-number">01</div>
+        <div class="slide-content container">
+            <h2 class="reveal">学习目标</h2>
+            <ul class="bullet-list reveal">
+                <li>理解 COD 作为<strong>"电子当量"</strong>的物理意义</li>
+                <li>掌握 COD 分馏体系 (S_S, S_I, X_S, X_I)</li>
+                <li>了解 COD 分馏的实验测定方法</li>
+                <li>理解氮的形态与转化路径</li>
+                <li>认识进水特征化对模型准确性的决定性影响</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 3: COD Concept -->
+    <section class="slide">
+        <div class="swiss-grid-bg"></div>
+        <div class="slide-number">02</div>
+        <div class="slide-content container">
+            <h2 class="reveal">COD：不只是水质指标</h2>
+            <div class="grid" style="margin-top: var(--content-gap);">
+                <div class="swiss-card reveal">
+                    <h3>传统定义</h3>
+                    <p>化学需氧量 (COD) 是指在强酸性条件下，用强氧化剂将水中有机物和还原性无机物完全氧化所消耗的氧量。</p>
+                </div>
+                <div class="swiss-card reveal" style="border-color: var(--accent);">
+                    <h3 style="border-bottom-color: var(--accent); color: var(--accent);">ASM 模型意义</h3>
+                    <p>在 ASM 模型的世界里，COD 是有机物中所含电子数量的度量。它本质上是一种<strong>能量货币</strong>。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Comparison -->
+    <section class="slide dark-slide">
+        <div class="slide-number">03</div>
+        <div class="slide-content container">
+            <h2 class="reveal">为什么选择 COD？</h2>
+            <p class="reveal" style="margin-bottom: var(--content-gap);">相比 BOD 和 TOC，COD 是建立物料平衡的最佳基准。</p>
+            
+            <div class="grid reveal">
+                <div class="swiss-card" style="background: transparent; border-color: #555;">
+                    <h3 style="color: var(--accent); border-bottom-color: #555;">COD</h3>
+                    <p>直接反映电子当量。<br><strong>守恒（不灭，只转化）。</strong></p>
+                </div>
+                <div class="swiss-card" style="background: transparent; border-color: #555;">
+                    <h3 style="color: #fff; border-bottom-color: #555;">BOD</h3>
+                    <p>反映可生物降解性。<br>但测定耗时，且<strong>不守恒</strong>。</p>
+                </div>
+                <div class="swiss-card" style="background: transparent; border-color: #555;">
+                    <h3 style="color: #fff; border-bottom-color: #555;">TOC</h3>
+                    <p>测定快速。<br>但不同物质比例不同，<strong>生物反应中不守恒</strong>。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Conservation -->
+    <section class="slide">
+        <div class="swiss-grid-bg"></div>
+        <div class="slide-number">04</div>
+        <div class="slide-content container">
+            <h2 class="reveal">COD 守恒方程</h2>
+            <p class="reveal">在 ASM 模型中，一切物质（底物、生物量、氧气）都用 COD 计价，这构成了 Peterson 矩阵的基石。</p>
+            
+            <div class="equation-box reveal">
+                COD_in = COD_eff + COD_sludge + O₂_consumed
+            </div>
+            
+            <ul class="bullet-list reveal">
+                <li><strong>COD_in</strong>: 进水总 COD</li>
+                <li><strong>COD_eff</strong>: 出水溶解性 COD</li>
+                <li><strong>COD_sludge</strong>: 排泥中的 COD</li>
+                <li><strong>O₂_consumed</strong>: 氧化消耗的 COD (即耗氧量)</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 6: Fractionation -->
+    <section class="slide">
+        <div class="slide-number">05</div>
+        <div class="slide-content container">
+            <h2 class="reveal">四组分 COD 分馏体系</h2>
+            <div class="grid reveal" style="grid-template-columns: 1fr 1fr; margin-top: 1rem;">
+                <div class="swiss-card" style="border-color: var(--accent);">
+                    <h3 style="color: var(--accent);">S_S (易降解溶解性)</h3>
+                    <p>小分子有机物，被异养菌快速消耗。<br><em>占比: 10-30%</em></p>
+                </div>
+                <div class="swiss-card" style="border-color: #000;">
+                    <h3>X_S (慢速降解颗粒性)</h3>
+                    <p>大分子有机物，需先经胞外酶水解再利用。<br><em>占比: 40-60%</em></p>
+                </div>
+                <div class="swiss-card" style="border-color: #999; color: #666;">
+                    <h3 style="border-bottom-color: #999; color: #555;">S_I (惰性溶解性)</h3>
+                    <p>不可生物降解，直接穿透系统进入出水。<br><em>占比: 5-10%</em></p>
+                </div>
+                <div class="swiss-card" style="border-color: #999; color: #666;">
+                    <h3 style="border-bottom-color: #999; color: #555;">X_I (惰性颗粒性)</h3>
+                    <p>不可生物降解，随污泥排出系统。<br><em>占比: 10-20%</em></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Importance -->
+    <section class="slide swiss-accent-box">
+        <div class="slide-number">06</div>
+        <div class="slide-content container">
+            <h2 class="reveal">分馏为何如此重要？</h2>
+            <p class="reveal" style="font-size: var(--h3-size); margin-bottom: 2rem; color: #fff;">Garbage In, Garbage Out</p>
+            
+            <ul class="bullet-list reveal">
+                <li><strong>S_S / X_S 比值：</strong>决定系统的动态耗氧响应，影响反硝化效率。</li>
+                <li><strong>S_I：</strong>直接决定出水 COD 的绝对下限。</li>
+                <li><strong>X_I：</strong>决定系统中惰性颗粒的积累，严重影响污泥产量预测。</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 8: Measurement -->
+    <section class="slide">
+        <div class="swiss-grid-bg"></div>
+        <div class="slide-number">07</div>
+        <div class="slide-content container">
+            <h2 class="reveal">实验测定方法</h2>
+            <div class="grid reveal" style="margin-top: var(--content-gap);">
+                <div class="swiss-card">
+                    <h3>OUR 法 (好氧呼吸速率法)</h3>
+                    <p>加入进水并监测耗氧速率。<br>快速峰值对应 S_S 消耗，缓慢下降段对应 X_S 水解。</p>
+                </div>
+                <div class="swiss-card">
+                    <h3>物化分离法</h3>
+                    <p>通过 0.45 μm 滤膜过滤和絮凝，分离溶解态 (S_S + S_I) 与颗粒态 (X_S + X_I)。</p>
+                </div>
+                <div class="swiss-card">
+                    <h3>BOD 曲线法</h3>
+                    <p>长期 BOD 测试 (20-28 天)，通过速率曲线推算 S_S 与 X_S 的贡献。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: Nitrogen -->
+    <section class="slide dark-slide">
+        <div class="slide-number">08</div>
+        <div class="slide-content container">
+            <h2 class="reveal">氮的转化路径</h2>
+            <p class="reveal" style="margin-bottom: 2rem;">在 ASM1 中，氮组分分为 S_NH, S_NO, S_ND, X_ND。</p>
+            
+            <div class="swiss-card reveal" style="background: transparent; border: 2px solid #555;">
+                <h3 style="color: var(--accent); border-bottom: 2px solid #555;">核心路径</h3>
+                <ul class="bullet-list" style="color: #fff;">
+                    <li><strong>氨化:</strong> 进水有机氮 (X_ND, S_ND) → 氨氮 (S_NH)</li>
+                    <li><strong>硝化 (好氧):</strong> 氨氮 → 硝态氮 (S_NO) <em>[由自养菌完成]</em></li>
+                    <li><strong>反硝化 (缺氧):</strong> 硝态氮 → 氮气 (N₂) 逸出 <em>[由异养菌完成]</em></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: Alkalinity -->
+    <section class="slide">
+        <div class="swiss-grid-bg"></div>
+        <div class="slide-number">09</div>
+        <div class="slide-content container">
+            <h2 class="reveal">碱度预警机制</h2>
+            <div class="equation-box reveal" style="border-color: var(--accent); background: #fff5f2;">
+                硝化消耗碱度 / 反硝化产生碱度
+            </div>
+            
+            <ul class="bullet-list reveal">
+                <li><strong>硝化:</strong> -2 mol H⁺ / mol NH₄⁺ (释放H⁺，降低pH)</li>
+                <li><strong>反硝化:</strong> +1 mol OH⁻ / mol NO₃⁻ (消耗H⁺，升高pH)</li>
+            </ul>
+            <p class="reveal" style="margin-top: 1.5rem; color: var(--accent); font-weight: 700;">
+                建模意义：跟踪碱度可预警 pH 抑制。当碱度 &lt; 50 mg/L，系统面临崩溃风险。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 11: End -->
+    <section class="slide swiss-accent-box">
+        <div class="slide-content container" style="align-items: center; text-align: center;">
+            <h2 class="reveal" style="font-size: var(--title-size);">本章小结</h2>
+            <p class="reveal" style="font-size: var(--h2-size); margin: 2rem 0;">精准的进水水质特征化<br>是任何有意义建模的起点。</p>
+            <p class="reveal">下一章：反应动力学基础</p>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                
+                // Initialize visibility for the first slide immediately
+                this.slides[0].classList.add('visible');
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateProgress();
+            }
+
+            setupIntersectionObserver() {
+                const options = { root: null, rootMargin: '0px', threshold: 0.5 };
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            // Update current slide index
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateProgress();
+                            this.updateNavDots();
+                        }
+                    });
+                }, options);
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                        e.preventDefault();
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot' + (index === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            updateNavDots() {
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+
+            updateProgress() {
+                const progress = document.getElementById('progress');
+                const percent = (this.currentSlide / (this.slides.length - 1)) * 100;
+                progress.style.width = percent + '%';
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        }
+
+        // Initialize presentation
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>

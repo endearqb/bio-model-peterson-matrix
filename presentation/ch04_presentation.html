@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 4 章：反应动力学基础</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Bold Signal Style
+           =========================================== */
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            --card-bg: #FF5722;
+            --card-bg-alt: #4361ee;
+            --card-bg-dark: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-on-card: #1a1a1a;
+            --text-muted: #aaaaaa;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.2rem);
+            
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           BASE VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-gradient);
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Bold Signal)
+           =========================================== */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            opacity: 0.5;
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: clamp(2rem, 5vw, 4rem);
+            display: flex;
+            flex-direction: column;
+            color: var(--text-on-card);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            flex: 1;
+        }
+
+        .main-card.alt { background: var(--card-bg-alt); color: white; }
+        .main-card.dark { background: var(--card-bg-dark); color: white; border: 1px solid #444; }
+
+        .slide-number {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+            font-family: var(--font-display);
+            font-size: clamp(4rem, 10vw, 8rem);
+            opacity: 0.1;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        h1, h2 {
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+        
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        
+        p, li {
+            font-size: var(--body-size);
+            line-height: 1.5;
+            font-weight: 500;
+            margin-bottom: 0.8rem;
+        }
+
+        ul {
+            padding-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .formula-box {
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            font-size: clamp(1.2rem, 2vw, 2rem);
+            text-align: center;
+            margin: 1rem 0;
+            border-left: 5px solid var(--text-on-card);
+        }
+        .main-card.dark .formula-box { background: rgba(255,255,255,0.05); border-left-color: var(--card-bg); }
+        .main-card.alt .formula-box { background: rgba(0,0,0,0.2); border-left-color: #fff; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            height: 100%;
+        }
+
+        /* ===========================================
+           INFOGRAPHICS & CHARTS
+           =========================================== */
+        .chart-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-top: 1rem;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
+        
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .bar-label { width: 100px; font-weight: 700; text-align: right; flex-shrink: 0; }
+        .bar-track { flex: 1; height: 30px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; background: var(--card-bg); border-radius: 4px; transition: width 1s ease-out; }
+        .bar-value { width: 80px; font-weight: 700; font-family: monospace; font-size: 1.1em; text-align: left; flex-shrink: 0; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal-scale { animation: scaleUp 0.6s var(--ease-out-expo) forwards; }
+        
+        @keyframes scaleUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.1s; animation-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; animation-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; animation-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; animation-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; animation-delay: 0.5s; }
+
+        /* ===========================================
+           UI CONTROLS
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0; left: 0; height: 4px;
+            background: var(--card-bg);
+            z-index: 100;
+            transition: width 0.3s ease;
+        }
+        .nav-dots {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .dot.active { background: var(--card-bg); transform: scale(1.5); }
+
+        /* Inline Editing */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+        .edit-toggle { position: fixed; top: 20px; left: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10001; background: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        [contenteditable="true"] { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: 4px; border-radius: 2px; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>KINETICS & CSTR</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">01</div>
+            <h1 class="reveal">反应动力学基础</h1>
+            <p class="reveal">Monod 方程与 CSTR</p>
+            <div class="reveal" style="margin-top: 2rem;">
+                <ul>
+                    <li>推导并理解 Monod 方程的物理意义</li>
+                    <li>掌握 μ_max, K_S, Y, b_d 四个核心参数</li>
+                    <li>能够推导 CSTR 质量平衡方程与 SRT 控制</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Monod Observation -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>1. MONOD OBSERVATION</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">02</div>
+            <h2 class="reveal">微生物生长的观察现象</h2>
+            <p class="reveal" style="color: var(--text-muted);">Jacques Monod (1949) 细菌纯培养实验发现：</p>
+            <ul class="reveal" style="margin-top:1rem;">
+                <li><strong>指数生长：</strong> 底物充足时，dX/dt = μ·X</li>
+                <li><strong>非恒定速率：</strong> 比增长速率 μ 不是常数，随底物浓度变化</li>
+                <li><strong>饱和现象：</strong> μ 与 S 的关系呈"饱和曲线"——低浓度时近似线性，高浓度时趋于饱和</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 3: Monod Equation -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>2. THE EQUATION</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">03</div>
+            <h2 class="reveal">Monod 方程</h2>
+            <div class="formula-box reveal">
+                μ = μ_max · S / (K_S + S)
+            </div>
+            <div class="grid-2 reveal">
+                <div>
+                    <ul>
+                        <li><strong>μ</strong> [d⁻¹]: 比增长速率</li>
+                        <li><strong>μ_max</strong> [d⁻¹]: 最大比增长速率</li>
+                        <li><strong>S</strong> [mg/L]: 限制性底物浓度</li>
+                        <li><strong>K_S</strong> [mg/L]: 半饱和常数 (当 μ = μ_max/2 时)</li>
+                    </ul>
+                </div>
+                <div class="chart-container">
+                    <svg viewBox="0 0 300 200" width="100%" height="100%" style="overflow:visible;">
+                        <!-- Axes -->
+                        <line x1="20" y1="180" x2="280" y2="180" stroke="white" stroke-width="2"/>
+                        <line x1="20" y1="180" x2="20" y2="20" stroke="white" stroke-width="2"/>
+                        <!-- mu_max line -->
+                        <line x1="20" y1="40" x2="280" y2="40" stroke="rgba(255,255,255,0.5)" stroke-dasharray="5,5"/>
+                        <text x="285" y="45" fill="white" font-size="12">μ_max</text>
+                        <!-- mu_max/2 line -->
+                        <line x1="20" y1="110" x2="100" y2="110" stroke="rgba(255,255,255,0.5)" stroke-dasharray="5,5"/>
+                        <text x="5" y="115" fill="white" font-size="12">μ_max/2</text>
+                        <!-- K_S line -->
+                        <line x1="100" y1="110" x2="100" y2="180" stroke="rgba(255,255,255,0.5)" stroke-dasharray="5,5"/>
+                        <text x="95" y="195" fill="white" font-size="12">K_S</text>
+                        <!-- Curve -->
+                        <path d="M 20 180 Q 80 180, 100 110 T 260 45" fill="none" stroke="#d4ff00" stroke-width="4"/>
+                        <text x="260" y="195" fill="white" font-size="12">S</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Parameter 1 -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>3. PARAMETERS : μ_max</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">04</div>
+            <h2 class="reveal">核心参数：μ_max</h2>
+            <p class="reveal">最大比增长速率 —— 底物极度充足时的生长速率上限 (20°C)</p>
+            
+            <div class="bar-chart reveal" style="margin-top: 2rem;">
+                <div class="bar-row">
+                    <div class="bar-label">异养菌</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 100%;"></div></div>
+                    <div class="bar-value">6.0 d⁻¹</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">PAO</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 20%; background: #00ffcc;"></div></div>
+                    <div class="bar-value">1.2 d⁻¹</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">AOB/NOB</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 15%; background: #ff00aa;"></div></div>
+                    <div class="bar-value">0.8 d⁻¹</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">Anammox</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 2%; background: #aaaaaa;"></div></div>
+                    <div class="bar-value">0.08 d⁻¹</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Parameters K_S -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>3. PARAMETERS : K_S</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">05</div>
+            <h2 class="reveal">核心参数：K_S</h2>
+            <p class="reveal">半饱和常数 —— 反映微生物对底物的<strong>亲和力</strong></p>
+            <div class="reveal" style="background: rgba(0,0,0,0.1); padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
+                <p>💡 <strong>反比关系：</strong></p>
+                <p>K_S 小 → 低浓度高效利用 → <strong>高亲和力</strong> (例: AOB 对 NH₄⁺ 0.5 mg/L)</p>
+                <p>K_S 大 → 高浓度才显著生长 → <strong>低亲和力</strong> (例: 异养菌对 S_S 20 mg/L)</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Y & b_d -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>3. PARAMETERS : Y & b_d</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">06</div>
+            <div class="grid-2">
+                <div class="reveal">
+                    <h2>Y 产率系数</h2>
+                    <p style="color: var(--card-bg);">合成 / 消耗比</p>
+                    <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-top:1rem;">
+                        <p><strong>Y_H = 0.67 gCOD/gCOD</strong></p>
+                        <p style="font-size: 0.85em; color: #aaa;">消耗 1g COD，其中 0.67g 变细胞，0.33g 氧化供能 (耗氧)。</p>
+                        <br>
+                        <p><strong>Y_A = 0.24</strong> (自养菌产率低)</p>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <h2>b_d 衰减系数</h2>
+                    <p style="color: var(--card-bg);">代谢、死亡、捕食</p>
+                    <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-top:1rem;">
+                        <p><strong>净生长 = 生长 - 衰减</strong></p>
+                        <p>dX/dt = (μ - b_d) · X</p>
+                        <br>
+                        <p style="font-size: 0.85em; color: #aaa;">工程意义：净增长必须 > 0，对应最小 SRT 控制线。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: CSTR -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>4. CSTR MASS BALANCE</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">07</div>
+            <h2 class="reveal">完全混合反应器 (CSTR)</h2>
+            <p class="reveal">ASM 模型的基本反应器单元：浓度完全均匀，出水 = 内部。</p>
+            
+            <div class="formula-box reveal" style="font-size: clamp(1rem, 1.5vw, 1.5rem);">
+                积累速率 = 进入速率 - 流出速率 - 消耗速率<br>
+                V · dS/dt = Q · S₀ - Q · S - r_su · V
+            </div>
+            
+            <div class="chart-container reveal">
+                <div style="display:flex; align-items:center; gap: 1rem; width: 100%; max-width: 600px;">
+                    <div style="text-align:center;">Q, S₀ <br>→</div>
+                    <div style="flex:1; background: rgba(0,0,0,0.2); border: 2px solid #fff; border-radius: 8px; height: 100px; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                        <strong>体积 V</strong>
+                        <span>浓度 X, S 完全混合</span>
+                    </div>
+                    <div style="text-align:center;">→ <br>Q, S</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: SRT Control -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>5. SRT CONTROL</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">08</div>
+            <h2 class="reveal">核心设计：污泥龄 SRT</h2>
+            <p class="reveal">稳态下 (dX/dt = 0)，生物量平衡给出核心洞察：</p>
+            
+            <div class="formula-box reveal" style="font-size: clamp(1rem, 1.5vw, 1.5rem);">
+                μ = b_d + 1/SRT<br>
+                S = K_S · (b_d + 1/SRT) / (μ_max - b_d - 1/SRT)
+            </div>
+            
+            <div class="reveal" style="background: var(--text-on-card); color: white; padding: 1.5rem; border-radius: 8px;">
+                <p>🎯 <strong>关键洞察：</strong></p>
+                <p>稳态出水底物浓度 S 仅取决于动力学参数和 SRT，<strong>与进水浓度 S₀ 完全无关！</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: SRT Impact -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>6. SRT IMPACT</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">09</div>
+            <h2 class="reveal">SRT 对系统的综合影响</h2>
+            
+            <div class="grid-2" style="margin-top:2rem;">
+                <div class="reveal" style="border-right: 1px solid #444; padding-right: 2rem;">
+                    <h3 style="color: #ff5722; margin-bottom: 1rem;">短 SRT (年轻污泥)</h3>
+                    <ul>
+                        <li>出水 S 偏高</li>
+                        <li>污泥产量高</li>
+                        <li>氧消耗低</li>
+                        <li>硝化易崩溃</li>
+                        <li>沉降性好</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="padding-left: 1rem;">
+                    <h3 style="color: #4361ee; margin-bottom: 1rem;">长 SRT (老化污泥)</h3>
+                    <ul>
+                        <li>出水 S 极低</li>
+                        <li>污泥产量低 (内源呼吸)</li>
+                        <li>氧消耗高</li>
+                        <li>硝化稳定</li>
+                        <li>可能引发污泥膨胀</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: Temp & Conclusion -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_04</span>
+            <span>7. TEMPERATURE & CONCLUSION</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">10</div>
+            <h2 class="reveal">温度影响与控制性约束</h2>
+            
+            <p class="reveal">p(T) = p(20°C) · θ^(T-20)</p>
+            
+            <ul class="reveal" style="margin-top:1.5rem;">
+                <li>硝化菌的 μ_max 远低于异养菌，且对温度更敏感 (θ ≈ 1.11)。</li>
+                <li><strong>最小 SRT (SRT_min = 1 / (μ_max - b_d))</strong>：北方冬季硝化菌 μ_max 大幅下降，所需 SRT 极长 (15-25d)。</li>
+                <li>因此，<strong>硝化需求通常是活性污泥系统的控制性约束。</strong></li>
+            </ul>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                // Prevent default scrolling to handle it manually for better snapping
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                
+                e.preventDefault();
+                this.isScrolling = true;
+
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else {
+                    this.isScrolling = false;
+                }
+
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            // Update current slide based on visibility
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return; // skip if editing
+                    
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                // Update Progress Bar
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+
+                // Update Dots
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '💾';
+                    
+                    document.querySelectorAll('h1, h2, h3, p, li, span').forEach(el => {
+                        // Exclude UI elements
+                        if(!el.closest('.nav-dots') && !el.closest('.header-bar') && !el.closest('.slide-number') && !el.classList.contains('bar-fill')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✏️';
+                    
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                    this.saveToLocal();
+                }
+            },
+            saveToLocal() {
+                const content = Array.from(document.querySelectorAll('.slide')).map(s => s.innerHTML);
+                localStorage.setItem('presentation_ch04_v2', JSON.stringify(content));
+            },
+            loadFromLocal() {
+                const saved = localStorage.getItem('presentation_ch04_v2');
+                if (saved) {
+                    try {
+                        const content = JSON.parse(saved);
+                        document.querySelectorAll('.slide').forEach((s, i) => {
+                            if (content[i]) s.innerHTML = content[i];
+                        });
+                    } catch(e) { console.error('Failed to load presentation state', e); }
+                }
+            }
+        };
+
+        // Load saved state on start
+        editor.loadFromLocal();
+
+        // 1. Click handler
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 2. Hotzone hover with 400ms grace period
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        // 3. Hotzone click
+        hotzone.addEventListener('click', () => {
+            if(!editor.isActive) editor.toggleEditMode();
+        });
+
+        // 4. Keyboard shortcut E
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+        });
+    </script>
+</body>
+</html>

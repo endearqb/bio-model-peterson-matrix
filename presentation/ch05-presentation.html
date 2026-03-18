@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 5 章：Peterson 速率矩阵</title>
+
+    <!-- Fonts: Inter for UI, JetBrains Mono for Matrix/Code -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Swiss Modern)
+           =========================================== */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f4f4f4;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --accent: #ff4500; /* International Orange */
+            --accent-soft: #fff0eb;
+            --secondary-accent: #007aff;
+            
+            --font-display: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.1rem);
+            
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           MANDATORY VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { height: 100%; overflow-x: hidden; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-display); }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+            background: var(--bg-primary); border-bottom: 1px solid var(--bg-secondary);
+        }
+
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden; padding: var(--slide-padding);
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Swiss Modern)
+           =========================================== */
+        .sidebar-accent {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 12px;
+            background: var(--accent);
+        }
+
+        .header-info {
+            position: absolute; top: var(--slide-padding); right: var(--slide-padding);
+            font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700;
+            color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em;
+        }
+
+        h1, h2, h3 { font-weight: 900; line-height: 1.1; text-transform: uppercase; margin-bottom: 0.5em; }
+        h1 { font-size: var(--title-size); border-left: 15px solid var(--accent); padding-left: 20px; }
+        h2 { font-size: var(--h2-size); color: var(--accent); }
+        
+        p, li { font-size: var(--body-size); line-height: 1.5; color: var(--text-primary); margin-bottom: 0.5rem; }
+        ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; }
+
+        /* Matrix Style */
+        .matrix-container {
+            font-family: var(--font-mono); font-size: clamp(0.7rem, 1vw, 0.9rem);
+            background: var(--bg-secondary); padding: 1.5rem; border-radius: 4px;
+            border: 1px solid #ddd; overflow-x: auto;
+        }
+        .matrix-table { width: 100%; border-collapse: collapse; }
+        .matrix-table th { border-bottom: 2px solid var(--text-primary); padding: 0.5rem; text-align: center; color: var(--accent); }
+        .matrix-table td { padding: 0.5rem; text-align: center; border-bottom: 1px solid #eee; }
+        .matrix-table tr:hover { background: var(--accent-soft); }
+        .matrix-table .row-label { text-align: left; font-weight: 700; color: var(--secondary-accent); }
+
+        /* Formula & Box */
+        .formula-box {
+            background: var(--accent-soft); border-left: 5px solid var(--accent);
+            padding: 1.5rem; font-family: var(--font-mono); font-weight: 700;
+            font-size: clamp(1rem, 1.8vw, 1.5rem); margin: 1rem 0;
+        }
+
+        /* Infographic Components */
+        .sep-container { display: flex; gap: 2px; background: #ddd; padding: 2px; border-radius: 4px; }
+        .sep-part { flex: 1; background: white; padding: 1.5rem; text-align: center; }
+        .sep-part h4 { color: var(--accent); margin-bottom: 1rem; font-size: 0.9rem; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateX(-20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateX(0); }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+
+        /* UI CONTROLS */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); z-index: 100; transition: width 0.3s ease; }
+        .nav-dots { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; }
+        .dot.active { background: var(--accent); transform: scale(1.5); }
+
+        /* Inline Editing UI */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 60px; height: 60px; z-index: 10000; }
+        .edit-toggle { position: fixed; top: 15px; left: 15px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 10001; background: var(--accent); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        [contenteditable="true"] { outline: 2px dashed var(--accent); outline-offset: 4px; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle">✏️</button>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="sidebar-accent"></div>
+        <div class="header-info">BIO-PROCESS MODELING / CH_05</div>
+        <div class="slide-content">
+            <h1 class="reveal">Peterson 速率矩阵</h1>
+            <h3 class="reveal" style="color: var(--text-secondary); margin-top: 1rem;">数学结构与物理意义</h3>
+            <p class="reveal" style="margin-top: 2rem; font-weight: 700; color: var(--accent);">
+                一种为复杂生物系统而生的数学语言
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 2: History -->
+    <section class="slide">
+        <div class="sidebar-accent" style="background: var(--secondary-accent);"></div>
+        <div class="slide-content">
+            <h2 class="reveal">历史来源：统一的框架</h2>
+            <div class="grid-2">
+                <div class="reveal">
+                    <p>在 ASM1 (1987) 诞生之前，各研究者表达模型的方式混乱不堪：</p>
+                    <ul>
+                        <li>方程组形式各异</li>
+                        <li>组分定义不统一</li>
+                        <li>化学计量与动力学混杂</li>
+                    </ul>
+                    <p><strong>Peterson (1965)</strong> 引入矩阵符号，<strong>Gujer</strong> 将其引入水处理领域。</p>
+                </div>
+                <div class="reveal matrix-container">
+                    <p style="color: var(--accent); font-weight: 700; margin-bottom: 1rem;">Core Value:</p>
+                    <p>将复杂的微分方程组转化为<strong>模块化、可视化</strong>的表格。使模型易于比较、交流与编程实现。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Three Elements -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">矩阵的三要素</h2>
+            <div class="grid-2 reveal">
+                <div class="matrix-container" style="background: white;">
+                    <table class="matrix-table">
+                        <tr>
+                            <th>过程 \ 组分</th>
+                            <th>C₁</th>
+                            <th>C₂</th>
+                            <th>速率 ρ</th>
+                        </tr>
+                        <tr>
+                            <td class="row-label">过程 1</td>
+                            <td>ν₁₁</td>
+                            <td>ν₁₂</td>
+                            <td>ρ₁</td>
+                        </tr>
+                        <tr>
+                            <td class="row-label">过程 2</td>
+                            <td>ν₂₁</td>
+                            <td>ν₂₂</td>
+                            <td>ρ₂</td>
+                        </tr>
+                    </table>
+                </div>
+                <div>
+                    <ul>
+                        <li><strong>组分 (Columns):</strong> 所有追踪的浓度 (S_S, X_BH, S_O...)</li>
+                        <li><strong>过程 (Rows):</strong> 所有生物/化学转化 (生长、衰减...)</li>
+                        <li><strong>系数 (Elements):</strong> νᵢⱼ 表示每生产 1 单位参考组分，组分 j 的变化量 (+ 生成, - 消耗)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Mass Balance -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">核心控制方程 (CSTR)</h2>
+            <p class="reveal">利用矩阵可以系统地写出任意组分的动态方程：</p>
+            <div class="formula-box reveal">
+                dCⱼ/dt = (1/HRT) · (Cⱼ,in - Cⱼ) + Σᵢ(νᵢⱼ · ρᵢ)
+            </div>
+            <div class="reveal" style="display: flex; gap: 2rem; margin-top: 1rem;">
+                <div style="flex:1; border-top: 4px solid var(--secondary-accent); padding-top: 1rem;">
+                    <strong>对流项 (Transport)</strong><br>
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">进水中组分带来的变化</span>
+                </div>
+                <div style="flex:1; border-top: 4px solid var(--accent); padding-top: 1rem;">
+                    <strong>反应项 (Reaction)</strong><br>
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">矩阵行与列的乘积和 (源/汇)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Vector Form -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">矢量形式：编程的艺术</h2>
+            <p class="reveal">现代建模软件 (Python/MATLAB) 内部的计算核心：</p>
+            <div class="formula-box reveal" style="background: #1a1a1a; color: #00ffcc; border-left-color: #00ffcc;">
+                d𝐂/dt = (𝐂ᵢₙ - 𝐂)/HRT + 𝝂ᵀ · 𝝆
+            </div>
+            <div class="reveal" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem;">
+                # Python Pseudocode<br>
+                dCdt = (Cin - C) / HRT + np.dot(nu.T, rho)
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: COD Conservation -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">COD 守恒：黄金检验</h2>
+            <p class="reveal">由于 COD 是能量守恒量，每个生物过程必须满足：</p>
+            <div class="formula-box reveal">
+                Σⱼ ( νᵢⱼ × COD_equiv(j) ) = 0
+            </div>
+            <div class="grid-2 reveal" style="margin-top: 1rem;">
+                <div class="matrix-container">
+                    <table class="matrix-table" style="font-size: 0.8rem;">
+                        <tr><th>组分</th><th>COD 当量</th></tr>
+                        <tr><td>有机物</td><td>+1.0</td></tr>
+                        <tr><td>溶解氧 S_O</td><td style="color: var(--accent);">-1.0</td></tr>
+                        <tr><td>硝酸盐 S_NO</td><td style="color: var(--accent);">-2.86</td></tr>
+                        <tr><td>氨氮 / 碱度</td><td>0</td></tr>
+                    </table>
+                </div>
+                <p style="font-size: 0.9rem;">
+                    <strong>物理意义：</strong><br>
+                    消耗的底物能量 = 变成细胞的能量 + 传递给电子受体的能量。凡是通过守恒检验的过程，模型即具备内在自洽性。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Orthogonal Separation -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">正交分离：模块化设计</h2>
+            <p class="reveal">Peterson 矩阵实现了两个维度的解耦：</p>
+            <div class="sep-container reveal" style="margin-top: 1.5rem;">
+                <div class="sep-part">
+                    <h4>化学计量 (Stoichiometry)</h4>
+                    <p style="font-size: 0.8rem;">"转化比例"<br>基于质量守恒的<strong>静态约束</strong></p>
+                    <p style="font-size: 1.5rem; font-weight: 900; color: #ddd;">𝝂</p>
+                </div>
+                <div style="width: 2px; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: 900;">×</div>
+                <div class="sep-part">
+                    <h4>动力学 (Kinetics)</h4>
+                    <p style="font-size: 0.8rem;">"转化速率"<br>基于环境条件的<strong>动态变量</strong></p>
+                    <p style="font-size: 1.5rem; font-weight: 900; color: #ddd;">𝝆</p>
+                </div>
+            </div>
+            <p class="reveal" style="margin-top: 1.5rem; font-size: 0.85rem; border-left: 3px solid #ddd; padding-left: 1rem;">
+                价值：修改 μ_max 不影响 COD 守恒；更换速率方程 (Monod -> Contois) 不需要改动矩阵本体。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 8: Example Matrix -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">完整示例：2 过程 × 4 组分</h2>
+            <div class="matrix-container reveal" style="font-size: 0.75rem;">
+                <table class="matrix-table">
+                    <tr>
+                        <th>过程 \ 组分</th>
+                        <th>S_S (底物)</th>
+                        <th>X_B (菌体)</th>
+                        <th>S_O (溶氧)</th>
+                        <th>X_P (残余)</th>
+                        <th>速率表达式 ρ</th>
+                    </tr>
+                    <tr>
+                        <td class="row-label">1. 好氧生长</td>
+                        <td>-1/Y_H</td>
+                        <td>+1</td>
+                        <td>-(1-Y_H)/Y_H</td>
+                        <td>0</td>
+                        <td>μ_max·...·X_B</td>
+                    </tr>
+                    <tr>
+                        <td class="row-label">2. 内源衰减</td>
+                        <td>0</td>
+                        <td>-1</td>
+                        <td>-(1-f_P)</td>
+                        <td>+f_P</td>
+                        <td>b_d·X_B</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="reveal" style="margin-top: 1rem; background: var(--accent-soft); padding: 0.8rem; border-radius: 4px;">
+                <p style="font-size: 0.8rem; margin: 0;"><strong>守恒验证 (过程1):</strong> (-1.493)×1 + (1.0)×1 + (-0.493)×(-1) = 0 ✓</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: Switching Functions -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">开关函数：环境自动切换</h2>
+            <p class="reveal">无需 if-else 逻辑，速率方程即可自动处理好氧/缺氧切换：</p>
+            <div class="grid-2 reveal" style="margin-top: 1rem;">
+                <div style="background: white; border: 1px solid #ddd; padding: 1rem;">
+                    <p style="font-weight: 700; color: var(--secondary-accent);">正向激活 (Monod)</p>
+                    <div class="formula-box" style="font-size: 1rem; padding: 0.8rem;">S / (K + S)</div>
+                    <p style="font-size: 0.75rem;">S 充足 → 1 (运行)<br>S 匮乏 → 0 (停止)</p>
+                </div>
+                <div style="background: white; border: 1px solid #ddd; padding: 1rem;">
+                    <p style="font-weight: 700; color: var(--accent);">负向抑制</p>
+                    <div class="formula-box" style="font-size: 1rem; padding: 0.8rem; border-left-color: var(--accent);">K / (K + S)</div>
+                    <p style="font-size: 0.75rem;">S 存在 → 0 (抑制)<br>S 消失 → 1 (解除)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: Summary -->
+    <section class="slide">
+        <div class="sidebar-accent"></div>
+        <div class="slide-content">
+            <h2 class="reveal">本章小结</h2>
+            <div class="grid-2 reveal">
+                <ul style="font-size: 1rem;">
+                    <li><strong>核心工具：</strong> Peterson 矩阵是描述复杂反应动力学的工业标准。</li>
+                    <li><strong>三个要素：</strong> 过程行、组分列、系数。</li>
+                    <li><strong>正交分离：</strong> 实现了化学计量与动力学的独立模块化。</li>
+                    <li><strong>守恒约束：</strong> COD 守恒是验证矩阵自洽性的唯一真理。</li>
+                </ul>
+                <div class="matrix-container" style="text-align: center;">
+                    <p style="font-size: 2rem;">𝝂 · 𝝆</p>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">这就是生物过程的本质</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                e.preventDefault();
+                this.isScrolling = true;
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else { this.isScrolling = false; }
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return;
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '💾';
+                    document.querySelectorAll('h1, h2, h3, p, li, td, th, span').forEach(el => {
+                        if(!el.closest('.nav-dots') && !el.closest('.header-info')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✏️';
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                }
+            }
+        };
+
+        document.getElementById('editToggle').addEventListener('click', () => editor.toggleEditMode());
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        document.addEventListener('keydown', (e) => { if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode(); });
+    </script>
+</body>
+</html>

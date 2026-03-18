@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 1 章：为什么需要污水生物模型？</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Bold Signal)
+           =========================================== */
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            --card-bg: #FF5722; /* International Orange */
+            --card-bg-dark: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-on-card: #1a1a1a;
+            --accent: #FF5722;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.1rem);
+            
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2.5rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           BASE VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { height: 100%; overflow-x: hidden; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+            background: var(--bg-gradient); padding: var(--slide-padding);
+        }
+
+        .slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Bold Signal)
+           =========================================== */
+        .main-card {
+            background: var(--card-bg); border-radius: 12px; padding: clamp(2rem, 5vw, 4rem);
+            display: flex; flex-direction: column; color: var(--text-on-card);
+            position: relative; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); flex: 1;
+        }
+        .main-card.dark { background: var(--card-bg-dark); color: white; border: 1px solid #444; }
+
+        .slide-number {
+            position: absolute; top: 1rem; right: 2rem; font-family: var(--font-display);
+            font-size: clamp(4rem, 10vw, 8rem); opacity: 0.1; pointer-events: none;
+        }
+
+        h1, h2 { font-family: var(--font-display); text-transform: uppercase; line-height: 1.1; margin-bottom: 1rem; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        
+        p, li { font-size: var(--body-size); line-height: 1.5; font-weight: 500; margin-bottom: 0.8rem; }
+        ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; height: 100%; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+
+        /* Infographic Components */
+        .timeline-step { border-left: 4px solid var(--card-bg); padding-left: 1.5rem; margin-bottom: 1.5rem; position: relative; }
+        .timeline-step::before { content: ''; position: absolute; left: -12px; top: 0; width: 20px; height: 20px; background: var(--card-bg); border-radius: 50%; }
+        
+        .pillar { background: rgba(255,255,255,0.05); padding: 1.5rem; border-top: 5px solid var(--card-bg); height: 100%; }
+        .pillar h4 { font-family: var(--font-display); color: var(--card-bg); margin-bottom: 1rem; }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal { opacity: 0; transform: translateY(30px); transition: 0.6s var(--ease-out-expo); }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.3s; }
+
+        /* UI CONTROLS */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--card-bg); z-index: 100; transition: width 0.3s ease; }
+        .nav-dots { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: 0.3s; }
+        .dot.active { background: var(--card-bg); transform: scale(1.5); }
+
+        /* Edit Mode UI */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+        .edit-toggle { position: fixed; top: 20px; left: 20px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 10001; background: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        [contenteditable="true"] { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: 4px; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+    <!-- Slide 1: Course Title -->
+    <section class="slide">
+        <div class="slide-content">
+            <div class="main-card reveal">
+                <div class="slide-number">00</div>
+                <p style="font-weight: 700; letter-spacing: 0.3em; margin-bottom: 0.5rem;">BIOPROCESS MODELING</p>
+                <h1>污水生物模型与 Peterson 速率矩阵</h1>
+                <h3 style="margin-top: 1rem;">完整教程 · 2026 版</h3>
+                <div style="margin-top: 3rem; display: flex; gap: 2rem;">
+                    <p><strong>面向:</strong> 环境工程师 / 研究生</p>
+                    <p><strong>周期:</strong> 12-16 周</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Chapter 1 Intro -->
+    <section class="slide">
+        <div class="slide-content">
+            <div class="main-card dark reveal">
+                <div class="slide-number">01</div>
+                <p style="color: var(--accent); font-weight: 700;">CHAPTER 01</p>
+                <h2>为什么需要污水生物模型？</h2>
+                <div class="grid-2" style="margin-top: 2rem;">
+                    <div>
+                        <p>从经验设计到数学建模的历史演进</p>
+                        <p>ASM 系列模型的诞生背景</p>
+                        <p>模型在工程实践中的三大核心价值</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px;">
+                        <p style="font-size: 0.8rem; color: #888;">"模型不是现实的替代品，而是我们理解现实的脚手架。"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Evolution History -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal" style="margin-bottom: 2rem;">设计方法的历史演进</h2>
+            <div class="grid-2">
+                <div class="reveal">
+                    <div class="timeline-step">
+                        <p class="mono" style="color: var(--accent);">1920s - 1960s</p>
+                        <p><strong>容积负荷法:</strong> 粗放式设计，依赖安全系数</p>
+                    </div>
+                    <div class="timeline-step">
+                        <p class="mono" style="color: var(--accent);">1960s - 1970s</p>
+                        <p><strong>食微比法 (F/M):</strong> 考虑了微生物与底物的比例</p>
+                    </div>
+                    <div class="timeline-step">
+                        <p class="mono" style="color: var(--accent);">1970s - 1980s</p>
+                        <p><strong>污泥龄法 (SRT):</strong> 保证硝化的动力学基础</p>
+                    </div>
+                </div>
+                <div class="main-card reveal" style="background: var(--accent); color: var(--text-on-card);">
+                    <h3>1987 - PRESENT</h3>
+                    <p style="font-weight: 700; font-size: 1.5rem;">数学模型法</p>
+                    <p>ASM 系列 + Peterson 矩阵<br>实现动态、多过程、多组分的精确模拟</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: ASM Milestone -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">ASM 系列模型的诞生</h2>
+            <div class="grid-2 reveal">
+                <div style="background: var(--card-bg-dark); padding: 2rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <p style="color: var(--accent); font-weight: 700;">1987 / ASM1</p>
+                        <p style="font-size: 0.9rem;">碳氧化 + 硝化 + 反硝化 (13组分 / 8过程)</p>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <p style="color: var(--accent); font-weight: 700;">1995 / ASM2</p>
+                        <p style="font-size: 0.9rem;">引入生物除磷 (EBPR)</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--accent); font-weight: 700;">1999 / ASM2d & ASM3</p>
+                        <p style="font-size: 0.9rem;">反硝化除磷与胞内储存物概念修正</p>
+                    </div>
+                </div>
+                <div class="main-card" style="justify-content: center; text-align: center;">
+                    <p style="font-size: 1.2rem; font-weight: 700;">统一的语言：</p>
+                    <h2 style="margin: 1rem 0;">PETERSON MATRIX</h2>
+                    <p>所有 IWA 模型的核心数学框架</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Engineering Values -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal" style="text-align: center; margin-bottom: 3rem;">模型在工程中的三大支柱</h2>
+            <div class="grid-3 reveal">
+                <div class="pillar">
+                    <h4>工程设计</h4>
+                    <ul style="font-size: 0.85rem;">
+                        <li>工艺方案优选 (A2O vs UCT)</li>
+                        <li>反应器容积精确核算</li>
+                        <li>极端工况压力测试</li>
+                    </ul>
+                </div>
+                <div class="pillar">
+                    <h4>运行优化</h4>
+                    <ul style="font-size: 0.85rem;">
+                        <li>曝气能耗精准降低</li>
+                        <li>外加碳源投加控制</li>
+                        <li>污泥龄与排泥策略优化</li>
+                    </ul>
+                </div>
+                <div class="pillar">
+                    <h4>故障诊断</h4>
+                    <ul style="font-size: 0.85rem;">
+                        <li>出水恶化原因回溯</li>
+                        <li>工艺瓶颈定位</li>
+                        <li>预警与应急预案制定</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Tutorial Structure -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2 class="reveal">教程结构与学习路径</h2>
+            <div class="grid-3 reveal" style="margin-top: 2rem;">
+                <div class="main-card dark" style="border-top: 10px solid #4CAF50;">
+                    <h4 style="color: #4CAF50;">基础篇</h4>
+                    <p style="font-size: 0.8rem;">代谢基础、COD 分馏、Monod 动力学 (Ch 1-4)</p>
+                </div>
+                <div class="main-card dark" style="border-top: 10px solid var(--accent);">
+                    <h4 style="color: var(--accent);">核心篇</h4>
+                    <p style="font-size: 0.8rem;">Peterson 矩阵、ASM1 完全解读、ASM2d/3 (Ch 5-8)</p>
+                </div>
+                <div class="main-card dark" style="border-top: 10px solid #2196F3;">
+                    <h4 style="color: #2196F3;">进阶篇</h4>
+                    <p style="font-size: 0.8rem;">Python 实现、模型校准、新兴模型 (Ch 9-12)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Roadmap -->
+    <section class="slide">
+        <div class="slide-content">
+            <div class="main-card reveal" style="background: white; color: black;">
+                <h2>学习路线图</h2>
+                <div style="margin-top: 2rem;">
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="background: black; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; margin-right: 1rem;">1</div>
+                        <p style="margin: 0;"><strong>打地基 (3-4周):</strong> 掌握 Monod 动力学与 CSTR 手算</p>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="background: var(--accent); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; margin-right: 1rem;">2</div>
+                        <p style="margin: 0;"><strong>核心突破 (3-4周):</strong> 透彻理解 Peterson 速率矩阵</p>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div style="background: black; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; margin-right: 1rem;">3</div>
+                        <p style="margin: 0;"><strong>实战应用 (4-5周):</strong> 编程实现模型并进行系统校准</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                e.preventDefault();
+                this.isScrolling = true;
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else { this.isScrolling = false; }
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return;
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '💾';
+                    document.querySelectorAll('h1, h2, h3, h4, p, li, strong, span').forEach(el => {
+                        if(!el.closest('.nav-dots') && !el.closest('.slide-number')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✏️';
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                }
+            }
+        };
+
+        document.getElementById('editToggle').addEventListener('click', () => editor.toggleEditMode());
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        document.addEventListener('keydown', (e) => { if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode(); });
+    </script>
+</body>
+</html>

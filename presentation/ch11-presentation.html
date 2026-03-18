@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 11 章：前沿发展与新兴模型</title>
+
+    <!-- Fonts: Syne (Display) & Space Mono (Mono/Accents) -->
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (Creative Voltage)
+           =========================================== */
+        :root {
+            --bg-primary: #0066ff; /* Electric Blue */
+            --bg-dark: #1a1a2e;
+            --accent-neon: #d4ff00; /* Neon Yellow */
+            --text-light: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.7);
+            
+            --font-display: 'Syne', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+            --font-body: 'Inter', sans-serif;
+
+            --title-size: clamp(2rem, 6vw, 4.5rem);
+            --h2-size: clamp(1.5rem, 4vw, 2.5rem);
+            --body-size: clamp(0.85rem, 1.4vw, 1.1rem);
+            
+            --slide-padding: clamp(1.5rem, 5vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2.5rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           MANDATORY VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body { height: 100%; overflow: hidden; background: var(--bg-dark); color: var(--text-light); font-family: var(--font-body); }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: row; position: relative;
+        }
+
+        /* Split Panel Layout */
+        .panel-left {
+            flex: 0 0 40%; background: var(--bg-primary);
+            display: flex; flex-direction: column; justify-content: center;
+            padding: var(--slide-padding); position: relative;
+            overflow: hidden;
+        }
+        .panel-right {
+            flex: 1; background: var(--bg-dark);
+            display: flex; flex-direction: column; justify-content: center;
+            padding: var(--slide-padding); position: relative;
+        }
+
+        /* Halftone Pattern Decoration */
+        .panel-left::after {
+            content: ''; position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(0,0,0,0.2) 2px, transparent 2px);
+            background-size: 20px 20px; opacity: 0.3;
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES
+           =========================================== */
+        h1, h2 { font-family: var(--font-display); line-height: 0.95; text-transform: uppercase; }
+        h1 { font-size: var(--title-size); color: var(--bg-dark); z-index: 1; }
+        h2 { font-size: var(--h2-size); color: var(--accent-neon); margin-bottom: 1rem; }
+        
+        .mono { font-family: var(--font-mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-neon); }
+        .panel-left .mono { color: var(--bg-dark); font-weight: 700; opacity: 0.6; }
+
+        p, li { font-size: var(--body-size); line-height: 1.5; margin-bottom: 0.5rem; }
+        ul { padding-left: 1.2rem; list-style: square; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem; border-radius: 4px; margin-top: 1rem;
+        }
+
+        .formula-box {
+            background: var(--accent-neon); color: var(--bg-dark);
+            padding: 1rem; font-family: var(--font-mono); font-weight: 700;
+            font-size: clamp(0.9rem, 1.5vw, 1.2rem); margin: 1rem 0;
+            box-shadow: 10px 10px 0 var(--bg-primary);
+        }
+
+        /* Infographic Components */
+        .gradient-orb {
+            width: 250px; height: 250px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff6600, #ffcc00, #0066ff);
+            filter: blur(40px); opacity: 0.4; position: absolute; z-index: 0;
+        }
+
+        .ags-particle {
+            width: 200px; height: 200px; border-radius: 50%;
+            background: radial-gradient(circle, #0066ff 0%, #1a1a2e 70%, #d4ff00 100%);
+            border: 2px solid var(--accent-neon); position: relative;
+            box-shadow: 0 0 30px rgba(212, 255, 0, 0.3);
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+
+        /* UI CONTROLS */
+        .progress-bar { position: fixed; bottom: 0; left: 0; height: 10px; background: var(--accent-neon); z-index: 100; transition: width 0.3s ease; }
+        .nav-info { position: fixed; top: 20px; right: 20px; font-family: var(--font-mono); font-size: 0.8rem; z-index: 100; color: var(--accent-neon); }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-info" id="navInfo">SLIDE 01</div>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="panel-left">
+            <p class="mono reveal">Chapter 11</p>
+            <h1 class="reveal">前沿发展<br>&新兴模型</h1>
+        </div>
+        <div class="panel-right">
+            <div class="gradient-orb" style="top: 10%; right: 10%;"></div>
+            <h2 class="reveal">2024-2025 建模风向标</h2>
+            <p class="reveal" style="color: var(--text-dim);">
+                从传统 ASM 框架向多尺度、数字化与智能化的全面跨越。
+            </p>
+            <div class="glass-card reveal">
+                <p class="mono" style="margin-bottom: 0.5rem;">Core Directions:</p>
+                <ul style="font-size: 0.9rem;">
+                    <li>突破一步硝化：两步硝化、Anammox、N₂O</li>
+                    <li>跨系统耦合：厌氧消化模型 ADM1</li>
+                    <li>多尺度挑战：好氧颗粒污泥 (AGS)</li>
+                    <li>工业 4.0：数字孪生与混合建模</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Two-step Nitrification -->
+    <section class="slide">
+        <div class="panel-left" style="background: var(--bg-dark); border-right: 2px solid var(--bg-primary);">
+            <h2 class="reveal" style="color: var(--text-light);">两步硝化模型</h2>
+            <p class="reveal" style="color: var(--text-dim);">突破 ASM1 的简化假设</p>
+        </div>
+        <div class="panel-right">
+            <div class="reveal">
+                <p><strong>ASM1 的简化：</strong> NH₄⁺ → NO₃⁻ (AOB+NOB 合并)</p>
+                <p style="margin-top: 1rem;"><strong>两步硝化扩展：</strong></p>
+                <div class="formula-box">
+                    Step 1: NH₄⁺ + 1.5 O₂ → NO₂⁻ (AOB)<br>
+                    Step 2: NO₂⁻ + 0.5 O₂ → NO₃⁻ (NOB)
+                </div>
+            </div>
+            <div class="glass-card reveal">
+                <p class="mono">Value:</p>
+                <ul style="font-size: 0.85rem;">
+                    <li>精确预测 <strong>NO₂⁻ 积累</strong> (短程硝化)</li>
+                    <li>揭示 <strong>DO 波动</strong> 对 AOB/NOB 竞争的影响</li>
+                    <li>Anammox 系统的前提条件</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: N2O Emission -->
+    <section class="slide">
+        <div class="panel-left">
+            <p class="mono">Greenhouse Gas</p>
+            <h1 class="reveal" style="font-size: 3rem;">N₂O <br>EMISSIONS</h1>
+        </div>
+        <div class="panel-right">
+            <h2 class="reveal">碳足迹的核心：N₂O</h2>
+            <p class="reveal">污水厂总碳足迹的 40-80% 可能来自 N₂O (GWP = 265)。</p>
+            <div class="grid reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div class="glass-card">
+                    <p class="mono" style="color: var(--accent-neon);">Pathway 1</p>
+                    <p style="font-size: 0.8rem;"><strong>AOB 途径:</strong><br>羟胺 (NH₂OH) 代谢副产物</p>
+                </div>
+                <div class="glass-card">
+                    <p class="mono" style="color: var(--accent-neon);">Pathway 2</p>
+                    <p style="font-size: 0.8rem;"><strong>反硝化途径:</strong><br>低 C/N 比下的中间产物积累</p>
+                </div>
+            </div>
+            <div class="formula-box reveal" style="background: transparent; color: var(--accent-neon); border: 1px solid var(--accent-neon); box-shadow: none;">
+                IWA N₂O 任务组模型 (2016) 统一框架
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: ADM1 -->
+    <section class="slide">
+        <div class="panel-left" style="background: #1a1a2e;">
+            <p class="mono" style="color: var(--bg-primary);">Anaerobic Pillar</p>
+            <h1 class="reveal" style="color: var(--accent-neon);">ADM1</h1>
+        </div>
+        <div class="panel-right">
+            <h2 class="reveal">厌氧消化模型 No. 1</h2>
+            <p class="reveal">与 ASM1 并列的支柱。描述 4 个主要阶段：</p>
+            <div class="reveal" style="display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0;">
+                <div style="background: #222; padding: 0.5rem; border-left: 4px solid var(--bg-primary);">1. 水解 (Hydrolysis)</div>
+                <div style="background: #222; padding: 0.5rem; border-left: 4px solid var(--accent-neon); margin-left: 1rem;">2. 发酵 (Acidogenesis)</div>
+                <div style="background: #222; padding: 0.5rem; border-left: 4px solid var(--bg-primary); margin-left: 2rem;">3. 产氢产乙酸 (Acetogenesis)</div>
+                <div style="background: #222; padding: 0.5rem; border-left: 4px solid var(--accent-neon); margin-left: 3rem;">4. 产甲烷 (Methanogenesis)</div>
+            </div>
+            <p class="reveal" style="font-size: 0.85rem; color: var(--text-dim);">
+                <strong>ASM-ADM1 接口：</strong> 通过元素守恒 (COD, N, P) 实现污泥处理线的能量回收预测。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 5: AGS Modeling -->
+    <section class="slide">
+        <div class="panel-left">
+            <p class="mono">Next Gen Technology</p>
+            <h1 class="reveal">颗粒污泥<br>建模</h1>
+        </div>
+        <div class="panel-right">
+            <div class="ags-particle reveal" style="margin-bottom: 2rem;">
+                <!-- Internal Label using CSS -->
+                <div style="position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: white;">好氧层 (AOB/NOB)</div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.6rem; color: white;">缺氧层 (PAO/Anammox)</div>
+                <div style="position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: white;">厌氧核</div>
+            </div>
+            <h2 class="reveal">多尺度挑战 (Multi-scale)</h2>
+            <ul class="reveal" style="font-size: 0.85rem;">
+                <li><strong>颗粒内部：</strong> 扩散-反应偏微分方程 (PDE)</li>
+                <li><strong>单颗粒：</strong> 粒径分布 (PBM 模型)</li>
+                <li><strong>反应器：</strong> 颗粒与液相交互 (SBR 循环)</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 6: Digital Twin -->
+    <section class="slide">
+        <div class="panel-left" style="background: var(--bg-dark); border-right: 4px solid var(--accent-neon);">
+            <p class="mono" style="color: var(--accent-neon);">Real-time Mirroring</p>
+            <h1 class="reveal" style="font-size: 3rem; color: var(--text-light);">数字孪生</h1>
+        </div>
+        <div class="panel-right">
+            <div class="glass-card reveal">
+                <p style="font-weight: 700;">物理污水厂 ↔ 数据 ↔ 数字孪生 (ASM+ML)</p>
+            </div>
+            <div class="grid reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div>
+                    <p class="mono">Feature 1</p>
+                    <p style="font-size: 0.8rem;"><strong>软测量 (Soft Sensing):</strong> 预测难以直接测量的组分 (如各菌群活性)</p>
+                </div>
+                <div>
+                    <p class="mono">Feature 2</p>
+                    <p style="font-size: 0.8rem;"><strong>预测性控制 (MPC):</strong> 在线优化曝气与加药，节能 15-25%</p>
+                </div>
+            </div>
+            <p class="reveal" style="margin-top: 1rem; border-top: 1px solid #333; padding-top: 1rem; font-size: 0.85rem;">
+                <strong>2024 趋势：</strong> 将机理模型作为“约束”，机器学习作为“加速器”。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 7: Hybrid Modeling -->
+    <section class="slide">
+        <div class="panel-left">
+            <p class="mono">Hybrid Intelligence</p>
+            <h1 class="reveal">混合建模</h1>
+        </div>
+        <div class="panel-right">
+            <h2 class="reveal">ASM + 机器学习</h2>
+            <div class="glass-card reveal" style="border-left: 5px solid var(--accent-neon);">
+                <p><strong>PINN (物理信息神经网络):</strong></p>
+                <p style="font-size: 0.85rem; color: var(--text-dim);">神经网络的 Loss 函数中包含 ASM 的微分方程约束。兼具数据拟合力与机理外推性。</p>
+            </div>
+            <div class="grid reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div>
+                    <p class="mono" style="color: var(--accent-neon);">Series Hybrid</p>
+                    <p style="font-size: 0.75rem;">ML 预测进水分馏 → ASM 计算生物过程</p>
+                </div>
+                <div>
+                    <p class="mono" style="color: var(--accent-neon);">Residual Hybrid</p>
+                    <p style="font-size: 0.75rem;">ASM 预测趋势 → ML 修正非线性残差</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: Future Horizons -->
+    <section class="slide">
+        <div class="panel-left" style="background: #1a1a2e;">
+            <h1 class="reveal" style="color: var(--accent-neon);">2025+<br>HORIZONS</h1>
+        </div>
+        <div class="panel-right">
+            <h2 class="reveal">下一代建模前沿</h2>
+            <ul class="reveal">
+                <li><strong>Transformer/LSTM:</strong> 长程运行预测与异常诊断</li>
+                <li><strong>图神经网络 (GNN):</strong> 建模污水管网空间关联</li>
+                <li><strong>CFD-ASM 耦合：</strong> 解决大型反应器流场异质性</li>
+                <li><strong>强化学习 (RL):</strong> 自主学习最优曝气策略</li>
+            </ul>
+            <div class="formula-box reveal">
+                AI Agent + Bio-Process Modeling = 自进化污水厂
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling) return;
+                e.preventDefault();
+                this.isScrolling = true;
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else { this.isScrolling = false; }
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('navInfo').innerText = `SLIDE ${(this.currentSlide + 1).toString().padStart(2, '0')}`;
+            }
+        }
+
+        new SlidePresentation();
+    </script>
+</body>
+</html>

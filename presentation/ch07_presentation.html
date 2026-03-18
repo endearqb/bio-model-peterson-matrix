@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第 7 章：ASM2d——生物除磷模型</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Bold Signal Style
+           =========================================== */
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            --card-bg: #FF5722;
+            --card-bg-alt: #4361ee;
+            --card-bg-dark: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-on-card: #1a1a1a;
+            --text-muted: #aaaaaa;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+
+            --title-size: clamp(2rem, 5vw, 4rem);
+            --h2-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            --body-size: clamp(0.9rem, 1.5vw, 1.2rem);
+            
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(1rem, 2vw, 2rem);
+
+            --duration-normal: 0.6s;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ===========================================
+           BASE VIEWPORT STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-gradient);
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+        }
+
+        /* ===========================================
+           THEME SPECIFIC STYLES (Bold Signal)
+           =========================================== */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            opacity: 0.5;
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: clamp(2rem, 5vw, 4rem);
+            display: flex;
+            flex-direction: column;
+            color: var(--text-on-card);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            flex: 1;
+        }
+
+        .main-card.alt { background: var(--card-bg-alt); color: white; }
+        .main-card.dark { background: var(--card-bg-dark); color: white; border: 1px solid #444; }
+
+        .slide-number {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+            font-family: var(--font-display);
+            font-size: clamp(4rem, 10vw, 8rem);
+            opacity: 0.1;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        h1, h2 {
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+        
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        h3 { font-family: var(--font-display); margin-bottom: 0.8rem; }
+        
+        p, li {
+            font-size: var(--body-size);
+            line-height: 1.5;
+            font-weight: 500;
+            margin-bottom: 0.8rem;
+        }
+
+        ul {
+            padding-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .formula-box {
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            font-size: clamp(1.2rem, 2vw, 2rem);
+            text-align: center;
+            margin: 1rem 0;
+            border-left: 5px solid var(--text-on-card);
+        }
+        .main-card.dark .formula-box { background: rgba(255,255,255,0.05); border-left-color: var(--card-bg); }
+        .main-card.alt .formula-box { background: rgba(0,0,0,0.2); border-left-color: #fff; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            height: 100%;
+            align-items: center;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            height: 100%;
+        }
+
+        /* ===========================================
+           INFOGRAPHICS & CHARTS
+           =========================================== */
+        .chart-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-top: 1rem;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
+        
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .bar-label { width: 100px; font-weight: 700; text-align: right; flex-shrink: 0; }
+        .bar-track { flex: 1; height: 30px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; background: var(--card-bg); border-radius: 4px; transition: width 1s ease-out; }
+        .bar-value { width: 80px; font-weight: 700; font-family: monospace; font-size: 1.1em; text-align: left; flex-shrink: 0; }
+
+        .process-box {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .process-arrow {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--card-bg);
+            margin: 0.5rem 0;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal-scale { animation: scaleUp 0.6s var(--ease-out-expo) forwards; }
+        
+        @keyframes scaleUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.1s; animation-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; animation-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; animation-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; animation-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; animation-delay: 0.5s; }
+        .reveal:nth-child(6) { transition-delay: 0.6s; animation-delay: 0.6s; }
+
+        /* ===========================================
+           UI CONTROLS
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0; left: 0; height: 4px;
+            background: var(--card-bg);
+            z-index: 100;
+            transition: width 0.3s ease;
+        }
+        .nav-dots {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .dot.active { background: var(--card-bg); transform: scale(1.5); }
+
+        /* Inline Editing */
+        .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+        .edit-toggle { position: fixed; top: 20px; left: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10001; background: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        [contenteditable="true"] { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: 4px; border-radius: 2px; }
+
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-dots" id="navDots"></div>
+
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>ASM2d BIOLOGICAL P-REMOVAL</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">01</div>
+            <h1 class="reveal">ASM2d 生物除磷模型</h1>
+            <p class="reveal">强化生物除磷 (EBPR) 的机制、PAO 代谢与模型扩展</p>
+            <div class="reveal" style="margin-top: 2rem;">
+                <ul>
+                    <li>理解强化生物除磷 (EBPR) 的代谢生理学机制</li>
+                    <li>掌握 PAO 的厌氧-好氧/缺氧代谢循环</li>
+                    <li>了解 ASM2d 相对于 ASM1 新增的组分与过程</li>
+                    <li>掌握 PAO 与 GAO 之间的竞争关系</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Why not ASM1? -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>1. LIMITATIONS OF ASM1</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">02</div>
+            <h2 class="reveal">为什么 ASM1 无法描述生物除磷？</h2>
+            
+            <p class="reveal" style="color: var(--text-muted);">ASM1 发布后 (1987)，EBPR 工艺广泛应用，但 ASM1 <strong>完全没有磷的组分</strong>。</p>
+            
+            <div class="reveal" style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem; border-left: 4px solid var(--card-bg);">
+                <h3 style="color: var(--card-bg);">聚磷菌 (PAO) 的独特代谢行为：</h3>
+                <ul style="margin-top: 1rem;">
+                    <li><strong>厌氧段：</strong> 释放磷酸盐，吸收 VFA 合成胞内有机物 (PHA)。</li>
+                    <li><strong>好/缺氧段：</strong> 氧化 PHA 获取能量，<strong>超量吸收磷酸盐</strong>合成多聚磷 (Poly-P)。</li>
+                </ul>
+                <p>这种 "先释磷后超量摄磷" 的循环使得系统能去除磷。ASM2d (1999) 正是为此而生。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: PAO Anaerobic -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>2. PAO METABOLISM (ANAEROBIC)</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">03</div>
+            <h2 class="reveal">厌氧阶段：PAO 释磷 + VFA 吸收</h2>
+            <p class="reveal">无 O₂，无 NO₃⁻ 环境下的代谢</p>
+            
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div style="background: rgba(0,0,0,0.2); padding: 2rem; border-radius: 8px;">
+                    <div class="process-box" style="border-color: #ff9800;">
+                        <strong>VFA (乙酸等, S_A)</strong><br>
+                        ↓ 被 PAO 吸收
+                    </div>
+                    <div class="process-arrow">+ Poly-P 水解能量</div>
+                    <div class="process-box" style="border-color: #4caf50;">
+                        <strong>合成 PHA (X_PHA)</strong><br>
+                        (胞内碳和能量储备)
+                    </div>
+                </div>
+                <div>
+                    <h3 style="color: #fff;">关键点：</h3>
+                    <ul>
+                        <li>必须有 <strong>VFA (S_A)</strong>，通常由发酵产生。</li>
+                        <li>能量来自 Poly-P (X_PP) 的水解。</li>
+                        <li>同时释放 PO₄³⁻ 到水中 → <strong>进水磷浓度升高是正常现象。</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: PAO Aerobic/Anoxic -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>3. PAO METABOLISM (AEROBIC/ANOXIC)</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">04</div>
+            <h2 class="reveal">好/缺氧阶段：摄磷 + PHA 氧化</h2>
+            <p class="reveal">有 O₂ (或 NO₃⁻) 环境下的超量摄取</p>
+            
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div style="background: rgba(0,0,0,0.1); padding: 2rem; border-radius: 8px;">
+                    <div class="process-box" style="border-color: #2196f3; color: #fff;">
+                        <strong>PHA (X_PHA) 氧化</strong><br>
+                        释放 CO₂ + H₂O + ATP
+                    </div>
+                    <div class="process-arrow" style="color: #1a1a1a;">↓ 利用能量 ↓</div>
+                    <div class="process-box" style="border-color: #e91e63; color: #fff; background: #1a1a1a;">
+                        <strong>超量合成 Poly-P (X_PP)</strong><br>
+                        (吸收水中 PO₄³⁻) + 细胞增殖
+                    </div>
+                </div>
+                <div>
+                    <h3 style="color: var(--text-on-card);">关键点：</h3>
+                    <ul>
+                        <li>摄磷量 <strong>>></strong> 释磷量 ("超量"摄磷)。</li>
+                        <li>X_PP 随 X_PAO 一起从系统通过<strong>排泥排出</strong>，实现磷去除。</li>
+                        <li>净效果：VFA 消耗 + 磷转入排泥。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Intracellular Storage -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>4. INTRACELLULAR STORAGE</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">05</div>
+            <h2 class="reveal">胞内储存物</h2>
+            <p class="reveal">ASM2d 显式追踪三类 PAO 的胞内物质：</p>
+            
+            <div class="grid-3 reveal" style="margin-top: 2rem; align-items: stretch;">
+                <div class="process-box">
+                    <h3 style="color: #ff9800;">X_PHA</h3>
+                    <p>聚羟基烷酸酯</p>
+                    <hr style="border-color:rgba(255,255,255,0.1); margin:1rem 0;">
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>功能:</strong> 碳和能量储备</p>
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>积累:</strong> 厌氧段</p>
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>消耗:</strong> 好/缺氧段</p>
+                </div>
+                
+                <div class="process-box">
+                    <h3 style="color: #00bcd4;">X_PP</h3>
+                    <p>多聚磷酸盐</p>
+                    <hr style="border-color:rgba(255,255,255,0.1); margin:1rem 0;">
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>功能:</strong> 磷储备+能量源</p>
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>积累:</strong> 好/缺氧段</p>
+                    <p style="font-size: 0.9em; color:#aaa;"><strong>消耗:</strong> 厌氧段</p>
+                </div>
+                
+                <div class="process-box" style="opacity: 0.6; border-style: dashed;">
+                    <h3 style="color: #8bc34a;">糖原 (X_GAO)</h3>
+                    <p>碳储备</p>
+                    <hr style="border-color:rgba(255,255,255,0.1); margin:1rem 0;">
+                    <p style="font-size: 0.9em; color:#aaa;">ASM2d 中部分<strong>隐含</strong>于 X_PAO 代谢，未做单独组分追踪。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: ASM2d Components -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>5. ASM2d COMPONENTS</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">06</div>
+            <h2 class="reveal">ASM2d 组分体系 (19 个)</h2>
+            <p class="reveal">S_S 被拆分，新增磷和 PAO 组分。</p>
+
+            <div class="grid-2 reveal" style="margin-top: 1rem; align-items: start;">
+                <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px;">
+                    <h3>溶解性组分 (新增)</h3>
+                    <ul style="font-size: 0.9em;">
+                        <li><strong>S_A:</strong> VFA，PAO 的直接碳源</li>
+                        <li><strong>S_F:</strong> 可发酵底物 (原 S_S 的一部分)</li>
+                        <li><strong>S_PO4:</strong> 溶解性磷酸盐</li>
+                        <li><strong>S_ALK:</strong> 碱度</li>
+                    </ul>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px;">
+                    <h3>颗粒性组分 (新增)</h3>
+                    <ul style="font-size: 0.9em;">
+                        <li><strong>X_PAO:</strong> 聚磷菌生物量</li>
+                        <li><strong>X_PP:</strong> PAO 胞内多聚磷</li>
+                        <li><strong>X_PHA:</strong> PAO 胞内 PHA</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Denitrifying PAO -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>6. DENITRIFYING PAO (DPAO)</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">07</div>
+            <h2 class="reveal">反硝化 PAO (DPAO)</h2>
+            
+            <p class="reveal"><strong>突破 ASM2 限制：</strong> 原 ASM2 假设 PAO 只能在好氧下摄磷。</p>
+            
+            <div class="formula-box reveal">
+                DPAO：在缺氧条件下利用 NO₃⁻ 摄磷
+            </div>
+            
+            <ul class="reveal" style="margin-top: 1.5rem;">
+                <li>工程中约 50% 的 PAO 可以利用 NO₃⁻ 作为电子受体。</li>
+                <li>ASM2d 增加了过程 13、15，引入修正系数 η_NO3,PAO (< 1)。</li>
+                <li><strong>工程意义：</strong> 
+                    <ul>
+                        <li>同时实现脱氮和除磷 (A²N²P 等工艺基础)。</li>
+                        <li>节省好氧容积和曝气能耗。</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 8: PAO vs GAO -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>7. COMPETITION: PAO vs GAO</span>
+        </div>
+        <div class="main-card dark reveal-scale">
+            <div class="slide-number">08</div>
+            <h2 class="reveal">PAO vs GAO：除磷效率的竞争</h2>
+            <p class="reveal">聚糖菌 (GAO) 会在厌氧段竞争吸收 VFA，但不除磷。</p>
+            
+            <div class="grid-2 reveal" style="margin-top: 2rem;">
+                <div style="border: 2px solid #4caf50; padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="color: #4caf50; text-align: center;">聚磷菌 (PAO)</h3>
+                    <ul style="font-size: 0.9em; margin-top: 1rem;">
+                        <li>厌氧能量源：Poly-P 水解</li>
+                        <li>好/缺氧段：<strong>超量摄磷</strong></li>
+                        <li>对除磷贡献：<strong>正面</strong></li>
+                    </ul>
+                </div>
+                <div style="border: 2px solid #f44336; padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="color: #f44336; text-align: center;">聚糖菌 (GAO)</h3>
+                    <ul style="font-size: 0.9em; margin-top: 1rem;">
+                        <li>厌氧能量源：糖原水解</li>
+                        <li>好/缺氧段：不积累 Poly-P</li>
+                        <li>对除磷贡献：<strong>负面</strong> (消耗VFA)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <p class="reveal" style="font-size: 0.85em; color: #aaa; margin-top: 1.5rem; text-align: center;">
+                * 增殖不利工况：高 COD/P 比、高温、低 pH、丙酸比例高。<br>
+                注意：标准 ASM2d 不含 GAO 模型。
+            </p>
+        </div>
+    </section>
+
+    <!-- Slide 9: ASM1 vs ASM2d Comparison -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>8. ASM1 vs ASM2d</span>
+        </div>
+        <div class="main-card reveal-scale">
+            <div class="slide-number">09</div>
+            <h2 class="reveal">ASM2d 与 ASM1 关键差异</h2>
+            
+            <div class="bar-chart reveal" style="margin-top: 2rem;">
+                <div class="bar-row">
+                    <div class="bar-label">组分数</div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: 68%; background: #444;"></div>
+                        <div class="bar-fill" style="width: 100%; position:absolute; top:0; z-index:-1;"></div>
+                    </div>
+                    <div class="bar-value">ASM1: 13 / ASM2d: 19</div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-label">过程数</div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: 38%; background: #444;"></div>
+                        <div class="bar-fill" style="width: 100%; position:absolute; top:0; z-index:-1;"></div>
+                    </div>
+                    <div class="bar-value">ASM1: 8 / ASM2d: 21</div>
+                </div>
+                
+                <div style="margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px;">
+                    <div><strong>磷追踪:</strong> 增加 S_PO4, X_PP</div>
+                    <div><strong>PAO 建模:</strong> X_PAO, X_PP, X_PHA</div>
+                    <div><strong>底物分馏:</strong> S_S → S_F + S_A</div>
+                    <div><strong>特殊过程:</strong> DPAO 缺氧除磷, 化学除磷</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: When to choose? -->
+    <section class="slide">
+        <div class="header-bar">
+            <span>CH_07</span>
+            <span>9. CONCLUSION</span>
+        </div>
+        <div class="main-card alt reveal-scale">
+            <div class="slide-number">10</div>
+            <h2 class="reveal">何时选择 ASM2d？</h2>
+            
+            <div class="grid-2 reveal" style="margin-top: 2rem; align-items: start;">
+                <div>
+                    <h3 style="color: #fff;">✅ 选择 ASM2d：</h3>
+                    <ul style="background: rgba(0,0,0,0.2); padding: 1.5rem 1.5rem 1.5rem 3rem; border-radius: 8px;">
+                        <li>系统包含厌氧段 (A²/O, UCT, JHB等)</li>
+                        <li>出水 TP 有明确要求 (< 0.5 mg/L)</li>
+                        <li>需研究或优化 EBPR 性能</li>
+                        <li>涉及化学/生物联合除磷</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="color: #fff;">❌ 坚持 ASM1：</h3>
+                    <ul style="background: rgba(0,0,0,0.2); padding: 1.5rem 1.5rem 1.5rem 3rem; border-radius: 8px;">
+                        <li>没有 EBPR (纯碳氮去除)</li>
+                        <li>参数数据有限 (ASM2d 参数多难校准)</li>
+                        <li>计算资源受限 (计算量是 2-3 倍)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupNavDots();
+                this.updateUI();
+
+                window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+            }
+
+            handleWheel(e) {
+                if(this.isScrolling || document.body.classList.contains('editing')) return;
+                e.preventDefault();
+                this.isScrolling = true;
+
+                if (e.deltaY > 0 && this.currentSlide < this.slides.length - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else {
+                    this.isScrolling = false;
+                }
+
+                setTimeout(() => { this.isScrolling = false; }, 800);
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateUI();
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (document.body.classList.contains('editing')) return;
+                    
+                    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') && this.currentSlide < this.slides.length - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                });
+            }
+
+            setupNavDots() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            goToSlide(index) {
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+        }
+
+        const presentation = new SlidePresentation();
+
+        /* ===========================================
+           INLINE EDITING SYSTEM
+           =========================================== */
+        const editor = {
+            isActive: false,
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                const toggleBtn = document.getElementById('editToggle');
+                
+                if (this.isActive) {
+                    document.body.classList.add('editing');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '💾';
+                    
+                    document.querySelectorAll('h1, h2, h3, p, li, span, strong, div.bar-value').forEach(el => {
+                        if(!el.closest('.nav-dots') && !el.closest('.header-bar') && !el.closest('.slide-number') && !el.classList.contains('bar-fill')) {
+                            el.setAttribute('contenteditable', 'true');
+                        }
+                    });
+                } else {
+                    document.body.classList.remove('editing');
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✏️';
+                    
+                    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                    this.saveToLocal();
+                }
+            },
+            saveToLocal() {
+                const content = Array.from(document.querySelectorAll('.slide')).map(s => s.innerHTML);
+                localStorage.setItem('presentation_ch07_v1', JSON.stringify(content));
+            },
+            loadFromLocal() {
+                const saved = localStorage.getItem('presentation_ch07_v1');
+                if (saved) {
+                    try {
+                        const content = JSON.parse(saved);
+                        document.querySelectorAll('.slide').forEach((s, i) => {
+                            if (content[i]) s.innerHTML = content[i];
+                        });
+                    } catch(e) { console.error('Failed to load presentation state', e); }
+                }
+            }
+        };
+
+        editor.loadFromLocal();
+
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        hotzone.addEventListener('click', () => {
+            if(!editor.isActive) editor.toggleEditMode();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+        });
+    </script>
+</body>
+</html>
