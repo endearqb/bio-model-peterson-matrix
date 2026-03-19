@@ -7,6 +7,13 @@
 
 ---
 
+## Online Reading
+
+- GitHub Pages: [https://endearqb.github.io/bio-model-peterson-matrix/](https://endearqb.github.io/bio-model-peterson-matrix/)
+- Direct HTML: [Bio-Model-Peterson-Matrix-Tutorial.html](Bio-Model-Peterson-Matrix-Tutorial.html)
+
+---
+
 ## Table of Contents
 
 - [Chapter 1: Why Do We Need Wastewater Biological Models?](Bio-Model-Peterson-Matrix-Tutorial.html#chapter-1)

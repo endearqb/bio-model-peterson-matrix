@@ -7,6 +7,13 @@
 
 ---
 
+## 在线阅读
+
+- GitHub Pages： [https://endearqb.github.io/bio-model-peterson-matrix/](https://endearqb.github.io/bio-model-peterson-matrix/)
+- 直接打开 HTML： [Bio-Model-Peterson-Matrix-Tutorial.html](Bio-Model-Peterson-Matrix-Tutorial.html)
+
+---
+
 ## 目录
 
 - [第 1 章：为什么需要污水生物模型？](Bio-Model-Peterson-Matrix-Tutorial.html#chapter-1)
